@@ -155,6 +155,19 @@ class ListaAprobados extends StatelessWidget {
   }
 }
 
+class ListaReprobados extends StatelessWidget {
+  final List<String> alumnos;
+  const ListaReprobados({super.key, required this.alumnos});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      itemCount: alumnos.length,
+      itemBuilder: (context, index) => Elemento(alumno: alumnos[index]),
+    );
+  }
+}
+
 class Elemento extends StatelessWidget {
   final String alumno;
   final Function funcionLista;

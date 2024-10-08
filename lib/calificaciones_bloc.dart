@@ -18,6 +18,7 @@ class CalificacionesBloc
   late List<String> alumnoOrdenado;
 
   List<String> get aprobados => UnmodifiableListView(_aprobados);
+
   List<String> get reprobados => UnmodifiableListView(_reprobados);
   List<String> get revision => UnmodifiableListView(_revision);
 
