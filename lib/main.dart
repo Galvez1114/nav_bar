@@ -16,16 +16,44 @@ class MainApp extends StatelessWidget {
         create: (context) => CalificacionesBloc(),
         child: BlocBuilder<CalificacionesBloc, EstadoCalificaciones>(
           builder: (context, state) {
-            var estado = context.watch<CalificacionesBloc>();
+            var bloc = context.watch<CalificacionesBloc>();
             return Scaffold(
-              bottomNavigationBar: BarraNavegacion(indice: estado.indice),
-              body: Center(
-                child: switch (estado.indice) {
-                  0 => ListaPorCalificar(alumnos: estado.alumnos),
-                  1 => ListaAprobados(alumnos: estado.aprobados),
-                  2 => ListaReprobado(alumnos: estado.reprobados),
-                  _ => const Advertencia(),
-                },
+              bottomNavigationBar: BarraNavegacion(indice: bloc.indice),
+              body: Column(
+                children: [
+                  Expanded(
+                    child: Center(
+                      child: switch (bloc.indice) {
+                        0 => ListaPorCalificar(
+                            alumnos: bloc.ordenado
+                                ? bloc.alumnoOrdenado
+                                : bloc.revision),
+                        1 => ListaAprobados(
+                            alumnos: bloc.ordenado
+                                ? bloc.alumnoOrdenado
+                                : bloc.aprobados),
+                        2 => ListaReprobado(
+                            alumnos: bloc.ordenado
+                                ? bloc.alumnoOrdenado
+                                : bloc.reprobados),
+                        _ => const Advertencia(),
+                      },
+                    ),
+                  ),
+                  Center(
+                      child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: ElevatedButton(
+                        onPressed: () {
+                          context
+                              .read<CalificacionesBloc>()
+                              .add(OrdenarAlfabetico(bloc.ordenado));
+                        },
+                        child: Text(bloc.ordenado
+                            ? "No ordenar alfabéticamente"
+                            : "Ordenar alfabéticamente")),
+                  ))
+                ],
               ),
             );
           },
@@ -55,7 +83,7 @@ class ListaReprobado extends StatelessWidget {
       itemBuilder: (context, index) => Elemento(
           alumno: alumnos[index],
           funcionLista: funcionalidadReprobados,
-          opciones: const {"Revision", "Aprobados"}),
+          opciones: const {"Revision": Colors.blue, "Aprobados": Colors.green}),
     );
   }
 
@@ -81,7 +109,10 @@ class ListaPorCalificar extends StatelessWidget {
       itemBuilder: (context, index) => Elemento(
         alumno: alumnos[index],
         funcionLista: funcionalidadRevision,
-        opciones: const {"Aprobados", "Reprobados"},
+        opciones: const {
+          "Aprobados": Colors.green,
+          "Reprobados": Colors.yellow
+        },
       ),
     );
   }
@@ -108,7 +139,7 @@ class ListaAprobados extends StatelessWidget {
       itemBuilder: (context, index) => Elemento(
         alumno: alumnos[index],
         funcionLista: funcionalidadAprobados,
-        opciones: const {"Revision", "Reprobar"},
+        opciones: const {"Revision": Colors.blue, "Reprobados": Colors.yellow},
       ),
     );
   }
@@ -127,7 +158,7 @@ class ListaAprobados extends StatelessWidget {
 class Elemento extends StatelessWidget {
   final String alumno;
   final Function funcionLista;
-  final Set<String> opciones;
+  final Map<String, Color> opciones;
   const Elemento(
       {super.key,
       required this.alumno,
@@ -136,15 +167,17 @@ class Elemento extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    String opcion1 = opciones.keys.elementAt(0);
+    String opcion2 = opciones.keys.elementAt(1);
     return Dismissible(
       direction: DismissDirection.horizontal,
       background: ColoredBox(
-        color: Colors.green,
-        child: Text(opciones.elementAt(0)),
+        color: opciones[opcion1]!,
+        child: Text(opcion1),
       ),
       secondaryBackground: ColoredBox(
-        color: Colors.yellow,
-        child: Text(opciones.elementAt(1)),
+        color: opciones[opcion2]!,
+        child: Container(alignment: Alignment.topRight, child: Text(opcion2)),
       ),
       onDismissed: (direction) {
         funcionLista(context, direction, alumno);
