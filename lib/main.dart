@@ -23,6 +23,7 @@ class MainApp extends StatelessWidget {
                 child: switch (estado.indice) {
                   0 => ListaPorCalificar(alumnos: estado.alumnos),
                   1 => ListaAprobados(alumnos: estado.aprobados),
+                  2 => ListaReprobados(alumnos: estado.reprobados),
                   _ => const Advertencia(),
                 },
               ),
@@ -59,6 +60,19 @@ class ListaPorCalificar extends StatelessWidget {
 class ListaAprobados extends StatelessWidget {
   final List<String> alumnos;
   const ListaAprobados({super.key, required this.alumnos});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      itemCount: alumnos.length,
+      itemBuilder: (context, index) => Elemento(alumno: alumnos[index]),
+    );
+  }
+}
+
+class ListaReprobados extends StatelessWidget {
+  final List<String> alumnos;
+  const ListaReprobados({super.key, required this.alumnos});
 
   @override
   Widget build(BuildContext context) {
