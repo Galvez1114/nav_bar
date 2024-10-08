@@ -17,6 +17,7 @@ class CalificacionesBloc
   final List<String> _aprobados = [];
   List<String> get aprobados => UnmodifiableListView(_aprobados);
   final List<String> _reprobados = [];
+  List<String> get reprobados => UnmodifiableListView(_reprobados);
 
   List<String> get alumnos => UnmodifiableListView(_alumnos);
   int _indice = 0;
@@ -27,9 +28,28 @@ class CalificacionesBloc
       _indice = event.indice;
       emit(NuevoTab(indice: _indice));
     });
+    on<Revision>((event, emit) {
+      _alumnos.add(event.nombre);
+      _aprobados.removeWhere((element) => element == event.nombre);
+      _reprobados.removeWhere(
+        (element) => element == event.nombre,
+      );
+      emit(CambioAlumno(nombre: event.nombre));
+    });
     on<Aprobado>((event, emit) {
       _aprobados.add(event.nombre);
       _alumnos.removeWhere((element) => element == event.nombre);
+      _reprobados.removeWhere(
+        (element) => element == event.nombre,
+      );
+      emit(CambioAlumno(nombre: event.nombre));
+    });
+    on<Reprobado>((event, emit) {
+      _reprobados.add(event.nombre);
+      _alumnos.removeWhere((element) => element == event.nombre);
+      _aprobados.removeWhere(
+        (element) => element == event.nombre,
+      );
       emit(CambioAlumno(nombre: event.nombre));
     });
   }
