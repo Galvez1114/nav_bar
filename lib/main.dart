@@ -65,7 +65,7 @@ class ListaAprobados extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView.builder(
       itemCount: alumnos.length,
-      itemBuilder: (context, index) => Elemento(alumno: alumnos[index]),
+      itemBuilder: (context, index) => ElementoRevisado(alumno: alumnos[index]),
     );
   }
 }
@@ -78,7 +78,7 @@ class ListaReprobados extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView.builder(
       itemCount: alumnos.length,
-      itemBuilder: (context, index) => Elemento(alumno: alumnos[index]),
+      itemBuilder: (context, index) => ElementoRevisado(alumno: alumnos[index]),
     );
   }
 }
@@ -97,7 +97,10 @@ class Elemento extends StatelessWidget {
       ),
       secondaryBackground: const ColoredBox(
         color: Colors.yellow,
-        child: Text('Reprobarlo'),
+        child: Text(
+          'Reprobarlo',
+          textAlign: TextAlign.right,
+        ),
       ),
       onDismissed: (direction) {
         if (direction == DismissDirection.startToEnd) {
@@ -105,6 +108,53 @@ class Elemento extends StatelessWidget {
         }
         if (direction == DismissDirection.endToStart) {
           context.read<CalificacionesBloc>().add(Reprobado(nombre: alumno));
+        }
+      },
+      key: UniqueKey(),
+      child: ListTile(
+        title: Text(alumno),
+        style: ListTileStyle.list,
+      ),
+    );
+  }
+}
+
+class ElementoRevisado extends StatelessWidget {
+  final String alumno;
+  const ElementoRevisado({super.key, required this.alumno});
+
+  @override
+  Widget build(BuildContext context) {
+    var estado = context.watch<CalificacionesBloc>();
+    return Dismissible(
+      direction: DismissDirection.horizontal,
+      background: const ColoredBox(
+        color: Colors.blue,
+        child: Text('Mandarlo a revisión'),
+      ),
+      secondaryBackground: switch (estado.indice) {
+        1 => const ColoredBox(
+            color: Colors.yellow,
+            child: Text('Reprobarlo', textAlign: TextAlign.right),
+          ),
+        2 => const ColoredBox(
+            color: Colors.green,
+            child: Text('Aprobarlo', textAlign: TextAlign.right),
+          ),
+        _ => const ColoredBox(
+            color: Colors.red,
+            child: Text('Est no deberia salir', textAlign: TextAlign.right),
+          )
+      },
+      onDismissed: (direction) {
+        if (direction == DismissDirection.startToEnd) {
+          context.read<CalificacionesBloc>().add(Revision(nombre: alumno));
+        }
+        if (estado.indice == 1 && direction == DismissDirection.endToStart) {
+          context.read<CalificacionesBloc>().add(Reprobado(nombre: alumno));
+        }
+        if (estado.indice == 2 && direction == DismissDirection.endToStart) {
+          context.read<CalificacionesBloc>().add(Aprobado(nombre: alumno));
         }
       },
       key: UniqueKey(),
