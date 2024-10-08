@@ -37,7 +37,11 @@ class CalificacionesBloc
       _reprobados.removeWhere(
         (element) => element == event.nombre,
       );
-      if (ordenado) ordenar();
+      if (ordenado) {
+        alumnoOrdenado.removeWhere(
+          (element) => element == event.nombre,
+        );
+      }
       emit(CambioAlumno(nombre: event.nombre));
     });
     on<Aprobado>((event, emit) {
@@ -46,7 +50,11 @@ class CalificacionesBloc
       _reprobados.removeWhere(
         (element) => element == event.nombre,
       );
-      if (ordenado) ordenar();
+      if (ordenado) {
+        alumnoOrdenado.removeWhere(
+          (element) => element == event.nombre,
+        );
+      }
       emit(CambioAlumno(nombre: event.nombre));
     });
     on<Reprobado>((event, emit) {
@@ -55,7 +63,11 @@ class CalificacionesBloc
       _aprobados.removeWhere(
         (element) => element == event.nombre,
       );
-      if (ordenado) ordenar();
+      if (ordenado) {
+        alumnoOrdenado.removeWhere(
+          (element) => element == event.nombre,
+        );
+      }
       emit(CambioAlumno(nombre: event.nombre));
     });
 
