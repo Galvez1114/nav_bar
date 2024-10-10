@@ -8,7 +8,6 @@ void main() {
 
 class MainApp extends StatelessWidget {
   const MainApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -40,25 +39,101 @@ class MainApp extends StatelessWidget {
                       },
                     ),
                   ),
-                  Center(
-                      child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: ElevatedButton(
-                        onPressed: () {
-                          context
-                              .read<CalificacionesBloc>()
-                              .add(OrdenarAlfabetico(bloc.ordenado));
-                        },
-                        child: Text(bloc.ordenado
-                            ? "No ordenar alfabéticamente"
-                            : "Ordenar alfabéticamente")),
-                  ))
+                  ButtonListAction(bloc: bloc)
                 ],
               ),
+              floatingActionButton: FloatingActionButton(
+                  child: const Icon(Icons.add),
+                  onPressed: () {
+                    showAlertDialog(context, bloc);
+                  }),
             );
           },
         ),
       ),
+    );
+  }
+
+  void showAlertDialog(BuildContext context, CalificacionesBloc bloc) {
+    TextEditingController alumnoController = TextEditingController();
+    // set up the button
+    Widget AgregarButton = TextButton(
+      child: const Text("Agregar"),
+      onPressed: () {
+        context
+            .read<CalificacionesBloc>()
+            .add(AgregarAlumno(bloc.indice, nombre: alumnoController.text));
+        Navigator.of(context).pop();
+      },
+    );
+
+    Widget CancelarButton = TextButton(
+      child: const Text("Cancelar"),
+      onPressed: () {
+        Navigator.of(context).pop();
+      },
+    );
+
+    Widget nombreAlumno = TextField(
+      controller: alumnoController,
+      decoration: const InputDecoration(label: Text("Ingresar nombre alumno")),
+    );
+
+    AlertDialog alert = AlertDialog(
+      title: const Text("Agregar alumno"),
+      content: nombreAlumno,
+      actions: [CancelarButton, AgregarButton],
+    );
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return alert;
+      },
+    );
+  }
+}
+
+class ButtonListAction extends StatelessWidget {
+  const ButtonListAction({
+    super.key,
+    required this.bloc,
+  });
+
+  final CalificacionesBloc bloc;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+        child: Row(
+      children: [
+        BotonOrdenamiento(bloc: bloc),
+      ],
+    ));
+  }
+}
+
+class BotonOrdenamiento extends StatelessWidget {
+  const BotonOrdenamiento({
+    super.key,
+    required this.bloc,
+  });
+
+  final CalificacionesBloc bloc;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: ElevatedButton(
+          onPressed: () {
+            context
+                .read<CalificacionesBloc>()
+                .add(OrdenarAlfabetico(bloc.ordenado));
+          },
+          child: Text(bloc.ordenado
+              ? "No ordenar alfabéticamente"
+              : "Ordenar alfabéticamente")),
     );
   }
 }
