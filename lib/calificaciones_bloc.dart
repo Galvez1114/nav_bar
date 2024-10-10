@@ -77,6 +77,10 @@ class CalificacionesBloc
       ordenado = !ordenado;
       emit(NuevoTab(indice: indice));
     });
+    on<AgregarAlumno>((event, emit) {
+      _revision.add(event.nombre);
+      emit(NuevoTab(indice: indice));
+    });
   }
 
   void ordenar() {
@@ -100,7 +104,9 @@ class CambioTab extends EventoCalificacion {
   CambioTab({required this.indice});
 }
 
-sealed class EstadoCalificaciones {}
+sealed class EstadoCalificaciones {} //********************************************************** */
+
+class AgregandoAlumnoEstado extends EstadoCalificaciones {}
 
 class NuevoTab extends EstadoCalificaciones {
   final int indice;
@@ -114,9 +120,16 @@ class CambioAlumno extends EstadoCalificaciones {
 }
 
 abstract class EventoAlumno extends EventoCalificacion {
+  // ****************************************
   final String nombre;
 
   EventoAlumno({required this.nombre});
+}
+
+class AgregarAlumno extends EventoAlumno {
+  final int indice;
+
+  AgregarAlumno(this.indice, {required super.nombre});
 }
 
 class OrdenarAlfabetico extends EventoAlumno {
