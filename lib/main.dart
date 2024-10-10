@@ -163,8 +163,22 @@ class ListaReprobados extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView.builder(
       itemCount: alumnos.length,
-      itemBuilder: (context, index) => Elemento(alumno: alumnos[index]),
+      itemBuilder: (context, index) => Elemento(
+        alumno: alumnos[index],
+        funcionLista: funcionalidadAprobados,
+        opciones: const {"Revision": Colors.blue, "Aprobados": Colors.green},
+      ),
     );
+  }
+
+  void funcionalidadAprobados(
+      BuildContext context, DismissDirection direction, String alumno) {
+    if (direction == DismissDirection.startToEnd) {
+      context.read<CalificacionesBloc>().add(Revision(nombre: alumno));
+    }
+    if (direction == DismissDirection.endToStart) {
+      context.read<CalificacionesBloc>().add(Aprobado(nombre: alumno));
+    }
   }
 }
 
