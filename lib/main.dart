@@ -16,16 +16,44 @@ class MainApp extends StatelessWidget {
         create: (context) => CalificacionesBloc(),
         child: BlocBuilder<CalificacionesBloc, EstadoCalificaciones>(
           builder: (context, state) {
-            var estado = context.watch<CalificacionesBloc>();
+            var bloc = context.watch<CalificacionesBloc>();
             return Scaffold(
-              bottomNavigationBar: BarraNavegacion(indice: estado.indice),
-              body: Center(
-                child: switch (estado.indice) {
-                  0 => ListaPorCalificar(alumnos: estado.alumnos),
-                  1 => ListaAprobados(alumnos: estado.aprobados),
-                  2 => ListaReprobados(alumnos: estado.reprobados),
-                  _ => const Advertencia(),
-                },
+              bottomNavigationBar: BarraNavegacion(indice: bloc.indice),
+              body: Column(
+                children: [
+                  Expanded(
+                    child: Center(
+                      child: switch (bloc.indice) {
+                        0 => ListaPorCalificar(
+                            alumnos: bloc.ordenado
+                                ? bloc.alumnoOrdenado
+                                : bloc.revision),
+                        1 => ListaAprobados(
+                            alumnos: bloc.ordenado
+                                ? bloc.alumnoOrdenado
+                                : bloc.aprobados),
+                        2 => ListaReprobado(
+                            alumnos: bloc.ordenado
+                                ? bloc.alumnoOrdenado
+                                : bloc.reprobados),
+                        _ => const Advertencia(),
+                      },
+                    ),
+                  ),
+                  Center(
+                      child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: ElevatedButton(
+                        onPressed: () {
+                          context
+                              .read<CalificacionesBloc>()
+                              .add(OrdenarAlfabetico(bloc.ordenado));
+                        },
+                        child: Text(bloc.ordenado
+                            ? "No ordenar alfabéticamente"
+                            : "Ordenar alfabéticamente")),
+                  ))
+                ],
               ),
             );
           },
@@ -44,6 +72,32 @@ class Advertencia extends StatelessWidget {
   }
 }
 
+class ListaReprobado extends StatelessWidget {
+  final List<String> alumnos;
+
+  const ListaReprobado({super.key, required this.alumnos});
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      itemCount: alumnos.length,
+      itemBuilder: (context, index) => Elemento(
+          alumno: alumnos[index],
+          funcionLista: funcionalidadReprobados,
+          opciones: const {"Revision": Colors.blue, "Aprobados": Colors.green}),
+    );
+  }
+
+  void funcionalidadReprobados(
+      BuildContext context, DismissDirection direction, String alumno) {
+    if (direction == DismissDirection.startToEnd) {
+      context.read<CalificacionesBloc>().add(Revision(nombre: alumno));
+    }
+    if (direction == DismissDirection.endToStart) {
+      context.read<CalificacionesBloc>().add(Aprobado(nombre: alumno));
+    }
+  }
+}
+
 class ListaPorCalificar extends StatelessWidget {
   final List<String> alumnos;
   const ListaPorCalificar({super.key, required this.alumnos});
@@ -52,8 +106,25 @@ class ListaPorCalificar extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView.builder(
       itemCount: alumnos.length,
-      itemBuilder: (context, index) => Elemento(alumno: alumnos[index]),
+      itemBuilder: (context, index) => Elemento(
+        alumno: alumnos[index],
+        funcionLista: funcionalidadRevision,
+        opciones: const {
+          "Aprobados": Colors.green,
+          "Reprobados": Colors.yellow
+        },
+      ),
     );
+  }
+
+  void funcionalidadRevision(
+      BuildContext context, DismissDirection direction, String alumno) {
+    if (direction == DismissDirection.startToEnd) {
+      context.read<CalificacionesBloc>().add(Aprobado(nombre: alumno));
+    }
+    if (direction == DismissDirection.endToStart) {
+      context.read<CalificacionesBloc>().add(Reprobado(nombre: alumno));
+    }
   }
 }
 
@@ -65,8 +136,18 @@ class ListaAprobados extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView.builder(
       itemCount: alumnos.length,
-      itemBuilder: (context, index) => ElementoRevisado(alumno: alumnos[index]),
+      itemBuilder: (context, index) => Elemento(alumno: alumnos[index]),
     );
+  }
+
+  void funcionalidadAprobados(
+      BuildContext context, DismissDirection direction, String alumno) {
+    if (direction == DismissDirection.startToEnd) {
+      context.read<CalificacionesBloc>().add(Revision(nombre: alumno));
+    }
+    if (direction == DismissDirection.endToStart) {
+      context.read<CalificacionesBloc>().add(Reprobado(nombre: alumno));
+    }
   }
 }
 
@@ -78,37 +159,47 @@ class ListaReprobados extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView.builder(
       itemCount: alumnos.length,
-      itemBuilder: (context, index) => ElementoRevisado(alumno: alumnos[index]),
+      itemBuilder: (context, index) => Elemento(alumno: alumnos[index]),
     );
+  }
+
+  void funcionalidadAprobados(
+      BuildContext context, DismissDirection direction, String alumno) {
+    if (direction == DismissDirection.startToEnd) {
+      context.read<CalificacionesBloc>().add(Revision(nombre: alumno));
+    }
+    if (direction == DismissDirection.endToStart) {
+      context.read<CalificacionesBloc>().add(Aprobado(nombre: alumno));
+    }
   }
 }
 
 class Elemento extends StatelessWidget {
   final String alumno;
-  const Elemento({super.key, required this.alumno});
+  final Function funcionLista;
+  final Map<String, Color> opciones;
+  const Elemento(
+      {super.key,
+      required this.alumno,
+      required this.funcionLista,
+      required this.opciones});
 
   @override
   Widget build(BuildContext context) {
+    String opcion1 = opciones.keys.elementAt(0);
+    String opcion2 = opciones.keys.elementAt(1);
     return Dismissible(
       direction: DismissDirection.horizontal,
-      background: const ColoredBox(
-        color: Colors.green,
-        child: Text('Aprobarlo'),
+      background: ColoredBox(
+        color: opciones[opcion1]!,
+        child: Text(opcion1),
       ),
       secondaryBackground: const ColoredBox(
         color: Colors.yellow,
-        child: Text(
-          'Reprobarlo',
-          textAlign: TextAlign.right,
-        ),
+        child: Text('Reprobarlo'),
       ),
       onDismissed: (direction) {
-        if (direction == DismissDirection.startToEnd) {
-          context.read<CalificacionesBloc>().add(Aprobado(nombre: alumno));
-        }
-        if (direction == DismissDirection.endToStart) {
-          context.read<CalificacionesBloc>().add(Reprobado(nombre: alumno));
-        }
+        funcionLista(context, direction, alumno);
       },
       key: UniqueKey(),
       child: ListTile(
