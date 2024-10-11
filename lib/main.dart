@@ -45,7 +45,7 @@ class MainApp extends StatelessWidget {
               floatingActionButton: FloatingActionButton(
                   child: const Icon(Icons.add),
                   onPressed: () {
-                    showAlertDialog(context, bloc);
+                    showAddAlertDialog(context, bloc);
                   }),
             );
           },
@@ -54,7 +54,46 @@ class MainApp extends StatelessWidget {
     );
   }
 
-  void showAlertDialog(BuildContext context, CalificacionesBloc bloc) {
+  void showRemoveAlertDialog(BuildContext context, CalificacionesBloc bloc) {
+    TextEditingController alumnoController = TextEditingController();
+    // set up the button
+    Widget AgregarButton = TextButton(
+      child: const Text("Remover"),
+      onPressed: () {
+        context
+            .read<CalificacionesBloc>()
+            .add(AgregarAlumno(bloc.indice, nombre: alumnoController.text));
+        Navigator.of(context).pop();
+      },
+    );
+
+    Widget CancelarButton = TextButton(
+      child: const Text("Cancelar"),
+      onPressed: () {
+        Navigator.of(context).pop();
+      },
+    );
+
+    Widget nombreAlumno = TextField(
+      controller: alumnoController,
+      decoration: const InputDecoration(label: Text("Ingresar nombre alumno")),
+    );
+
+    AlertDialog alert = AlertDialog(
+      title: const Text("Agregar alumno"),
+      content: nombreAlumno,
+      actions: [CancelarButton, AgregarButton],
+    );
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return alert;
+      },
+    );
+  }
+
+  void showAddAlertDialog(BuildContext context, CalificacionesBloc bloc) {
     TextEditingController alumnoController = TextEditingController();
     // set up the button
     Widget AgregarButton = TextButton(
@@ -287,6 +326,13 @@ class Elemento extends StatelessWidget {
       key: UniqueKey(),
       child: ListTile(
         title: Text(alumno),
+        trailing: IconButton(
+            onPressed: () {
+              context
+                  .read<CalificacionesBloc>()
+                  .add(EliminarAlumno(nombre: alumno));
+            },
+            icon: const Icon(Icons.remove)),
         style: ListTileStyle.list,
       ),
     );

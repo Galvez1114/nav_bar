@@ -78,7 +78,25 @@ class CalificacionesBloc
       emit(NuevoTab(indice: indice));
     });
     on<AgregarAlumno>((event, emit) {
-      _revision.add(event.nombre);
+      if (_revision.contains(event.nombre)) {
+        _revision.add(event.nombre);
+
+        if (ordenado && event.indice == 0) {
+          alumnoOrdenado.add(event.nombre);
+          ordenar();
+        }
+      }
+      emit(NuevoTab(indice: indice));
+    });
+    on<EliminarAlumno>((event, emit) {
+      _revision.removeWhere(
+        (element) => element == event.nombre,
+      );
+      if (ordenado && indice == 0) {
+        alumnoOrdenado.removeWhere(
+          (element) => element == event.nombre,
+        );
+      }
       emit(NuevoTab(indice: indice));
     });
   }
@@ -124,6 +142,10 @@ abstract class EventoAlumno extends EventoCalificacion {
   final String nombre;
 
   EventoAlumno({required this.nombre});
+}
+
+class EliminarAlumno extends EventoAlumno {
+  EliminarAlumno({required super.nombre});
 }
 
 class AgregarAlumno extends EventoAlumno {
