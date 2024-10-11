@@ -104,12 +104,7 @@ class ButtonListAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-        child: Row(
-      children: [
-        BotonOrdenamiento(bloc: bloc),
-      ],
-    ));
+    return Center(child: BotonOrdenamiento(bloc: bloc));
   }
 }
 
