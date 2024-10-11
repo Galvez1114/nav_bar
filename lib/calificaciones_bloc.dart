@@ -78,7 +78,7 @@ class CalificacionesBloc
       emit(NuevoTab(indice: indice));
     });
     on<AgregarAlumno>((event, emit) {
-      if (_revision.contains(event.nombre)) {
+      if (!_revision.contains(event.nombre)) {
         _revision.add(event.nombre);
 
         if (ordenado && event.indice == 0) {

@@ -54,45 +54,6 @@ class MainApp extends StatelessWidget {
     );
   }
 
-  void showRemoveAlertDialog(BuildContext context, CalificacionesBloc bloc) {
-    TextEditingController alumnoController = TextEditingController();
-    // set up the button
-    Widget AgregarButton = TextButton(
-      child: const Text("Remover"),
-      onPressed: () {
-        context
-            .read<CalificacionesBloc>()
-            .add(AgregarAlumno(bloc.indice, nombre: alumnoController.text));
-        Navigator.of(context).pop();
-      },
-    );
-
-    Widget CancelarButton = TextButton(
-      child: const Text("Cancelar"),
-      onPressed: () {
-        Navigator.of(context).pop();
-      },
-    );
-
-    Widget nombreAlumno = TextField(
-      controller: alumnoController,
-      decoration: const InputDecoration(label: Text("Ingresar nombre alumno")),
-    );
-
-    AlertDialog alert = AlertDialog(
-      title: const Text("Agregar alumno"),
-      content: nombreAlumno,
-      actions: [CancelarButton, AgregarButton],
-    );
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return alert;
-      },
-    );
-  }
-
   void showAddAlertDialog(BuildContext context, CalificacionesBloc bloc) {
     TextEditingController alumnoController = TextEditingController();
     // set up the button
@@ -269,33 +230,6 @@ class ListaAprobados extends StatelessWidget {
   }
 }
 
-class ListaReprobados extends StatelessWidget {
-  final List<String> alumnos;
-  const ListaReprobados({super.key, required this.alumnos});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.builder(
-      itemCount: alumnos.length,
-      itemBuilder: (context, index) => Elemento(
-        alumno: alumnos[index],
-        funcionLista: funcionalidadAprobados,
-        opciones: const {"Revision": Colors.blue, "Aprobados": Colors.green},
-      ),
-    );
-  }
-
-  void funcionalidadAprobados(
-      BuildContext context, DismissDirection direction, String alumno) {
-    if (direction == DismissDirection.startToEnd) {
-      context.read<CalificacionesBloc>().add(Revision(nombre: alumno));
-    }
-    if (direction == DismissDirection.endToStart) {
-      context.read<CalificacionesBloc>().add(Aprobado(nombre: alumno));
-    }
-  }
-}
-
 class Elemento extends StatelessWidget {
   final String alumno;
   final Function funcionLista;
@@ -328,13 +262,51 @@ class Elemento extends StatelessWidget {
         title: Text(alumno),
         trailing: IconButton(
             onPressed: () {
+              showDialog(
+                context: context,
+                builder: (_) {
+                  return BlocProvider.value(
+                    value: BlocProvider.of<CalificacionesBloc>(context),
+                    child: AlertConfirmacionEliminar(alumno: alumno),
+                  );
+                },
+              );
+            },
+            icon: const Icon(Icons.remove_circle_outline)),
+        style: ListTileStyle.list,
+      ),
+    );
+  }
+}
+
+class AlertConfirmacionEliminar extends StatelessWidget {
+  const AlertConfirmacionEliminar({
+    super.key,
+    required this.alumno,
+  });
+
+  final String alumno;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text("¿Estás seguro de eliminar a $alumno?"),
+      content: Text("El alumno $alumno será permanentemente eliminado"),
+      actions: [
+        TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: const Text("Cancelar")),
+        TextButton(
+            onPressed: () {
               context
                   .read<CalificacionesBloc>()
                   .add(EliminarAlumno(nombre: alumno));
+              Navigator.of(context).pop();
             },
-            icon: const Icon(Icons.remove)),
-        style: ListTileStyle.list,
-      ),
+            child: const Text("Continuar"))
+      ],
     );
   }
 }
