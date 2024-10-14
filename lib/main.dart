@@ -1,9 +1,18 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nav_bar/calificaciones_bloc.dart';
 
-void main() {
-  runApp(const MainApp());
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:sqflite/sqflite.dart';
+
+Future main() async {
+  if (Platform.isWindows || Platform.isLinux) {
+    sqfliteFfiInit();
+  }
+  databaseFactory = databaseFactoryFfi;
+  runApp(MainApp());
 }
 
 class MainApp extends StatelessWidget {
@@ -12,7 +21,7 @@ class MainApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       home: BlocProvider(
-        create: (context) => CalificacionesBloc(),
+        create: (context) => CalificacionesBloc()..add(ExtractDBData()),
         child: BlocBuilder<CalificacionesBloc, EstadoCalificaciones>(
           builder: (context, state) {
             var bloc = context.watch<CalificacionesBloc>();
@@ -239,6 +248,7 @@ class Elemento extends StatelessWidget {
   Widget build(BuildContext context) {
     String opcion1 = opciones.keys.elementAt(0);
     String opcion2 = opciones.keys.elementAt(1);
+    var bloc = context.watch<CalificacionesBloc>();
     return Dismissible(
       direction: DismissDirection.horizontal,
       background: ColoredBox(
@@ -255,19 +265,21 @@ class Elemento extends StatelessWidget {
       key: UniqueKey(),
       child: ListTile(
         title: Text(alumno),
-        trailing: IconButton(
-            onPressed: () {
-              showDialog(
-                context: context,
-                builder: (_) {
-                  return BlocProvider.value(
-                    value: BlocProvider.of<CalificacionesBloc>(context),
-                    child: AlertConfirmacionEliminar(alumno: alumno),
+        trailing: bloc.indice == 0
+            ? IconButton(
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (_) {
+                      return BlocProvider.value(
+                        value: BlocProvider.of<CalificacionesBloc>(context),
+                        child: AlertConfirmacionEliminar(alumno: alumno),
+                      );
+                    },
                   );
                 },
-              );
-            },
-            icon: const Icon(Icons.remove_circle_outline)),
+                icon: const Icon(Icons.remove_circle_outline))
+            : null,
         style: ListTileStyle.list,
       ),
     );
