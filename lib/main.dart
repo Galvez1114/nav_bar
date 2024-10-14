@@ -1,9 +1,18 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nav_bar/calificaciones_bloc.dart';
 
-void main() {
-  runApp(const MainApp());
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+import 'package:sqflite/sqflite.dart';
+
+Future main() async {
+  if (Platform.isWindows || Platform.isLinux) {
+    sqfliteFfiInit();
+  }
+  databaseFactory = databaseFactoryFfi;
+  runApp(MainApp());
 }
 
 class MainApp extends StatelessWidget {
@@ -12,7 +21,7 @@ class MainApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       home: BlocProvider(
-        create: (context) => CalificacionesBloc(),
+        create: (context) => CalificacionesBloc()..add(ExtractDBData()),
         child: BlocBuilder<CalificacionesBloc, EstadoCalificaciones>(
           builder: (context, state) {
             var bloc = context.watch<CalificacionesBloc>();
@@ -45,7 +54,7 @@ class MainApp extends StatelessWidget {
               floatingActionButton: FloatingActionButton(
                   child: const Icon(Icons.add),
                   onPressed: () {
-                    showAlertDialog(context, bloc);
+                    showAddAlertDialog(context, bloc);
                   }),
             );
           },
@@ -54,7 +63,7 @@ class MainApp extends StatelessWidget {
     );
   }
 
-  void showAlertDialog(BuildContext context, CalificacionesBloc bloc) {
+  void showAddAlertDialog(BuildContext context, CalificacionesBloc bloc) {
     TextEditingController alumnoController = TextEditingController();
     // set up the button
     Widget AgregarButton = TextButton(
@@ -104,12 +113,7 @@ class ButtonListAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-        child: Row(
-      children: [
-        BotonOrdenamiento(bloc: bloc),
-      ],
-    ));
+    return Center(child: BotonOrdenamiento(bloc: bloc));
   }
 }
 
@@ -230,33 +234,6 @@ class ListaAprobados extends StatelessWidget {
   }
 }
 
-class ListaReprobados extends StatelessWidget {
-  final List<String> alumnos;
-  const ListaReprobados({super.key, required this.alumnos});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.builder(
-      itemCount: alumnos.length,
-      itemBuilder: (context, index) => Elemento(
-        alumno: alumnos[index],
-        funcionLista: funcionalidadAprobados,
-        opciones: const {"Revision": Colors.blue, "Aprobados": Colors.green},
-      ),
-    );
-  }
-
-  void funcionalidadAprobados(
-      BuildContext context, DismissDirection direction, String alumno) {
-    if (direction == DismissDirection.startToEnd) {
-      context.read<CalificacionesBloc>().add(Revision(nombre: alumno));
-    }
-    if (direction == DismissDirection.endToStart) {
-      context.read<CalificacionesBloc>().add(Aprobado(nombre: alumno));
-    }
-  }
-}
-
 class Elemento extends StatelessWidget {
   final String alumno;
   final Function funcionLista;
@@ -271,6 +248,7 @@ class Elemento extends StatelessWidget {
   Widget build(BuildContext context) {
     String opcion1 = opciones.keys.elementAt(0);
     String opcion2 = opciones.keys.elementAt(1);
+    var bloc = context.watch<CalificacionesBloc>();
     return Dismissible(
       direction: DismissDirection.horizontal,
       background: ColoredBox(
@@ -287,8 +265,55 @@ class Elemento extends StatelessWidget {
       key: UniqueKey(),
       child: ListTile(
         title: Text(alumno),
+        trailing: bloc.indice == 0
+            ? IconButton(
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (_) {
+                      return BlocProvider.value(
+                        value: BlocProvider.of<CalificacionesBloc>(context),
+                        child: AlertConfirmacionEliminar(alumno: alumno),
+                      );
+                    },
+                  );
+                },
+                icon: const Icon(Icons.remove_circle_outline))
+            : null,
         style: ListTileStyle.list,
       ),
+    );
+  }
+}
+
+class AlertConfirmacionEliminar extends StatelessWidget {
+  const AlertConfirmacionEliminar({
+    super.key,
+    required this.alumno,
+  });
+
+  final String alumno;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text("¿Estás seguro de eliminar a $alumno?"),
+      content: Text("El alumno $alumno será permanentemente eliminado"),
+      actions: [
+        TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: const Text("Cancelar")),
+        TextButton(
+            onPressed: () {
+              context
+                  .read<CalificacionesBloc>()
+                  .add(EliminarAlumno(nombre: alumno));
+              Navigator.of(context).pop();
+            },
+            child: const Text("Continuar"))
+      ],
     );
   }
 }
