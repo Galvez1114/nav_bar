@@ -10,12 +10,13 @@ class CalificacionesBloc
   final List<String> _aprobados = [];
   final List<String> _reprobados = [];
   final List<String> _revision = [];
+  final Map<String, int> _calificaciones = {};
   late List<String> alumnoOrdenado;
 
   List<String> get aprobados => UnmodifiableListView(_aprobados);
-
   List<String> get reprobados => UnmodifiableListView(_reprobados);
   List<String> get revision => UnmodifiableListView(_revision);
+  Map<String, int> get calificaciones => _calificaciones;
 
   bool ordenado = false;
   int _indice = 0;
@@ -28,6 +29,7 @@ class CalificacionesBloc
       await db.connectionDatabase();
       List<Alumno> listaAlumnos = await db.getAlumnosAsList();
       for (var alumno in listaAlumnos) {
+        _calificaciones[alumno.name] = alumno.calificacion;
         switch (alumno.estadoCalificacion) {
           case estadoRevision:
             _revision.add(alumno.name);
@@ -104,7 +106,7 @@ class CalificacionesBloc
           _aprobados.contains(event.nombre) ||
           _reprobados.contains(event.nombre))) {
         _revision.add(event.nombre);
-        await db.insertAlumno(event.nombre, estadoRevision);
+        await db.insertAlumno(event.nombre, estadoRevision, 0);
         if (ordenado && event.indice == 0) {
           alumnoOrdenado.add(event.nombre);
           ordenar();
@@ -122,6 +124,12 @@ class CalificacionesBloc
           (element) => element == event.nombre,
         );
       }
+      emit(NuevoTab(indice: indice));
+    });
+
+    on<Calificar>((event, emit) async {
+      _calificaciones[event.alumno] = event.calificacion;
+      await db.updateCalificacion(event.calificacion.toString(), event.alumno);
       emit(NuevoTab(indice: indice));
     });
   }
@@ -145,6 +153,12 @@ class CambioTab extends EventoCalificacion {
   final int indice;
 
   CambioTab({required this.indice});
+}
+
+class Calificar extends EventoCalificacion {
+  final int calificacion;
+  final String alumno;
+  Calificar({required this.alumno, required this.calificacion});
 }
 
 class ExtractDBData extends EventoCalificacion {}

@@ -16,14 +16,14 @@ class SQLDatabase {
 
   Future<void> _createTable() async {
     await _connection.execute(
-        'CREATE TABLE IF NOT EXISTS $tablaAlumno ($columnaNombreAlumno TEXT PRIMARY KEY, $columnaEstadoCalificacion TEXT CHECK($columnaEstadoCalificacion IN (\'$estadoRevision\', \'$estadoAprobado\', \'$estadoReprobado\')))');
+        "CREATE TABLE IF NOT EXISTS $tablaAlumno ($columnaNombreAlumno TEXT PRIMARY KEY, $columnaEstadoCalificacion TEXT CHECK($columnaEstadoCalificacion IN ('$estadoRevision', '$estadoAprobado', '$estadoReprobado')), $columnaCalificacion INTEGER)");
   }
 
   Future<void> insertAlumno(
-      String nameAlumno, String estadoCalificacion) async {
+      String nameAlumno, String estadoCalificacion, int calificacion) async {
     await _connection.transaction((txn) async {
       int id1 = await txn.rawInsert(
-          'INSERT INTO $tablaAlumno ($columnaNombreAlumno, $columnaEstadoCalificacion) VALUES("$nameAlumno", "$estadoCalificacion")');
+          'INSERT INTO $tablaAlumno ($columnaNombreAlumno, $columnaEstadoCalificacion, $columnaCalificacion) VALUES("$nameAlumno", "$estadoCalificacion", "$calificacion")');
     });
   }
 
@@ -41,14 +41,23 @@ class SQLDatabase {
     });
   }
 
+  Future<void> updateCalificacion(String calificacion, String alumno) async {
+    await _connection.transaction((txn) async {
+      int id1 = await txn.rawUpdate(
+          'UPDATE $tablaAlumno SET $columnaCalificacion = "$calificacion" WHERE $columnaNombreAlumno = "$alumno";');
+    });
+  }
+
   Future<List<Alumno>> getAlumnosAsList() async {
     List<Map<String, Object?>> consulta =
         await _connection.rawQuery('SELECT * FROM $tablaAlumno');
     List<Alumno> listValues = [];
     for (var alumno in consulta) {
       listValues.add(Alumno(
-          name: alumno[columnaNombreAlumno] as String,
-          estadoCalificacion: alumno[columnaEstadoCalificacion] as String));
+        name: alumno[columnaNombreAlumno] as String,
+        estadoCalificacion: alumno[columnaEstadoCalificacion] as String,
+        calificacion: alumno[columnaCalificacion] as int,
+      ));
     }
     return listValues;
   }
@@ -67,9 +76,9 @@ void main() async {
   databaseFactory = databaseFactoryFfi;
   SQLDatabase db = SQLDatabase();
   await db.connectionDatabase();
-  // await db._connection.execute("DROP TABLE $tablaAlumno");
-  await db._createTable();
-  // await db.insertAlumno("juan1", estadoRevision);
-  // await db.insertAlumno("juan2", estadoAprobado);
-  // await db.insertAlumno("juan3", estadoReprobado);
+  //await db._connection.execute("DROP TABLE $tablaAlumno");
+  //await db._createTable();
+  await db.insertAlumno("juan1", estadoRevision, 100);
+  await db.insertAlumno("juan2", estadoAprobado, 70);
+  await db.insertAlumno("juan3", estadoReprobado, 50);
 }
