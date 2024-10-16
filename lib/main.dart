@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nav_bar/calificaciones_bloc.dart';
 
@@ -12,7 +13,7 @@ Future main() async {
     sqfliteFfiInit();
   }
   databaseFactory = databaseFactoryFfi;
-  runApp(MainApp());
+  runApp(const MainApp());
 }
 
 class MainApp extends StatelessWidget {
@@ -20,6 +21,7 @@ class MainApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       home: BlocProvider(
         create: (context) => CalificacionesBloc()..add(ExtractDBData()),
         child: BlocBuilder<CalificacionesBloc, EstadoCalificaciones>(
@@ -266,22 +268,86 @@ class Elemento extends StatelessWidget {
       child: ListTile(
         title: Text(alumno),
         trailing: bloc.indice == 0
-            ? IconButton(
-                onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (_) {
-                      return BlocProvider.value(
-                        value: BlocProvider.of<CalificacionesBloc>(context),
-                        child: AlertConfirmacionEliminar(alumno: alumno),
-                      );
-                    },
-                  );
-                },
-                icon: const Icon(Icons.remove_circle_outline))
-            : null,
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 60,
+                    height: 40,
+                    child: TextFieldCalificar(alumno: alumno),
+                  ),
+                  BotonEliminarAlumno(alumno: alumno)
+                ],
+              )
+            : Text(
+                bloc.calificaciones[alumno].toString(),
+                style: const TextStyle(fontSize: 15),
+              ),
         style: ListTileStyle.list,
       ),
+    );
+  }
+}
+
+class BotonEliminarAlumno extends StatelessWidget {
+  final String alumno;
+
+  const BotonEliminarAlumno({
+    super.key,
+    required this.alumno,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+        onPressed: () {
+          showDialog(
+            context: context,
+            builder: (_) {
+              return BlocProvider.value(
+                value: BlocProvider.of<CalificacionesBloc>(context),
+                child: AlertConfirmacionEliminar(alumno: alumno),
+              );
+            },
+          );
+        },
+        icon: const Icon(Icons.remove_circle_outline));
+  }
+}
+
+class TextFieldCalificar extends StatelessWidget {
+  final String alumno;
+  const TextFieldCalificar({
+    super.key,
+    required this.alumno,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    TextEditingController calificarAlumno = TextEditingController();
+    var bloc = context.watch<CalificacionesBloc>();
+    calificarAlumno.text = bloc.calificaciones[alumno].toString();
+    return TextField(
+      controller: calificarAlumno,
+      textAlign: TextAlign.center,
+      keyboardType: TextInputType.number,
+      inputFormatters: [
+        FilteringTextInputFormatter.digitsOnly,
+      ],
+      decoration: const InputDecoration(
+          border: OutlineInputBorder(), contentPadding: EdgeInsets.all(0.0)),
+      onChanged: (_) {
+        if (calificarAlumno.text == "") calificarAlumno.text = "0";
+        int valueEntero = int.parse(calificarAlumno.text);
+        calificarAlumno.text = valueEntero.toString();
+        if (valueEntero > 100) {
+          calificarAlumno.text = "100";
+          valueEntero = 100;
+        }
+        context
+            .read<CalificacionesBloc>()
+            .add(Calificar(calificacion: valueEntero, alumno: alumno));
+      },
     );
   }
 }
