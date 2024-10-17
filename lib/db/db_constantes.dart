@@ -1,4 +1,4 @@
-const String NAME_DB = "alumnos.db";
+const String nameDB = "alumnos.db";
 /* TABLAS */
 
 const String tablaAlumno = "alumnos";
