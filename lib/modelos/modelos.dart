@@ -28,16 +28,16 @@ class AlumnosHandler {
         _reprobados.contains(alumno);
   }
 
-  void inicLists(List<Alumno> alumnos, TiposListas lista) {
+  void inicLists(Alumno alumno, TiposListas lista) {
     switch (lista) {
       case TiposListas.revision:
-        _revision = alumnos;
+        _revision.add(alumno);
         return;
       case TiposListas.aprobados:
-        _aprobados = alumnos;
+        _aprobados.add(alumno);
         return;
       case TiposListas.reprobados:
-        _reprobados = alumnos;
+        _reprobados.add(alumno);
         return;
     }
   }

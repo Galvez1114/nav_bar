@@ -17,16 +17,16 @@ class CalificacionesBloc
     on<ExtractDBData>((event, emit) async {
       await db.connectionDatabase();
       List<Alumno> listaAlumnos = await db.getAlumnosAsList();
-      for (var alumno in listaAlumnos) {
+      for (Alumno alumno in listaAlumnos) {
         switch (alumno.estadoCalificacion) {
           case estadoRevision:
-            alumnos.inicLists(listaAlumnos, TiposListas.revision);
+            alumnos.inicLists(alumno, TiposListas.revision);
             break;
           case estadoAprobado:
-            alumnos.inicLists(listaAlumnos, TiposListas.aprobados);
+            alumnos.inicLists(alumno, TiposListas.aprobados);
             break;
           case estadoReprobado:
-            alumnos.inicLists(listaAlumnos, TiposListas.reprobados);
+            alumnos.inicLists(alumno, TiposListas.reprobados);
             break;
           default:
             //VALOR NO IMPLEMENTADO.
@@ -37,7 +37,6 @@ class CalificacionesBloc
       emit(NuevoTab(indice: _indice));
     });
     on<CambioTab>((event, emit) async {
-      await db.getAlumnosAsList();
       _indice = event.indice;
       ordenado.cambiarOrdenado("", false);
       promedio = calcularPromedioLista(indice);
