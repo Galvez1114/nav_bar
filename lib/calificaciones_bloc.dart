@@ -1,23 +1,12 @@
-import 'dart:collection';
-
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nav_bar/db/db.dart';
 import 'package:nav_bar/db/db_constantes.dart';
-import 'package:nav_bar/main.dart';
-import 'package:nav_bar/modelos/modelos_db.dart';
+import 'package:nav_bar/modelos/modelos.dart';
 
 class CalificacionesBloc
     extends Bloc<EventoCalificacion, EstadoCalificaciones> {
-  final List<String> _aprobados = [];
-  final List<String> _reprobados = [];
-  final List<String> _revision = [];
-  final Map<String, int> _calificaciones = {};
-  late List<String> alumnoOrdenado;
-
-  List<String> get aprobados => UnmodifiableListView(_aprobados);
-  List<String> get reprobados => UnmodifiableListView(_reprobados);
-  List<String> get revision => UnmodifiableListView(_revision);
-  Map<String, int> get calificaciones => _calificaciones;
+  AlumnosHandler alumnos = AlumnosHandler();
+  late List<Alumno> alumnoOrdenado;
 
   bool ordenado = false;
   int _indice = 0;
@@ -30,19 +19,18 @@ class CalificacionesBloc
       await db.connectionDatabase();
       List<Alumno> listaAlumnos = await db.getAlumnosAsList();
       for (var alumno in listaAlumnos) {
-        _calificaciones[alumno.name] = alumno.calificacion;
         switch (alumno.estadoCalificacion) {
           case estadoRevision:
-            _revision.add(alumno.name);
+            alumnos.inicLists(listaAlumnos, TiposListas.revision);
             break;
           case estadoAprobado:
-            _aprobados.add(alumno.name);
+            alumnos.inicLists(listaAlumnos, TiposListas.aprobados);
             break;
           case estadoReprobado:
-            _reprobados.add(alumno.name);
+            alumnos.inicLists(listaAlumnos, TiposListas.reprobados);
             break;
           default:
-            print("Este valor no está implementado");
+            //VALOR NO IMPLEMENTADO.
             break;
         }
       }
@@ -54,96 +42,80 @@ class CalificacionesBloc
       ordenado = false;
       emit(NuevoTab(indice: _indice));
     });
-    on<Revision>((event, emit) async {
-      _revision.add(event.nombre);
-      _aprobados.removeWhere((element) => element == event.nombre);
-      _reprobados.removeWhere(
-        (element) => element == event.nombre,
-      );
-      await db.updateEstadoAlumno(estadoRevision, event.nombre);
+    on<MandarARevision>((event, emit) async {
+      alumnos.cambioEstado(event.alumno, event.fromList, TiposListas.revision);
+      await db.updateEstadoAlumno(estadoRevision, event.alumno.name);
       if (ordenado) {
         alumnoOrdenado.removeWhere(
-          (element) => element == event.nombre,
+          (element) => element == event.alumno,
         );
       }
-      emit(CambioAlumno(nombre: event.nombre));
+      emit(CambioAlumno(nombre: event.alumno));
     });
-    on<Aprobado>((event, emit) async {
-      _aprobados.add(event.nombre);
-      _revision.removeWhere((element) => element == event.nombre);
-      _reprobados.removeWhere(
-        (element) => element == event.nombre,
-      );
-      await db.updateEstadoAlumno(estadoAprobado, event.nombre);
+    on<MandarAAprobados>((event, emit) async {
+      alumnos.cambioEstado(event.alumno, event.fromList, TiposListas.aprobados);
+      await db.updateEstadoAlumno(estadoAprobado, event.alumno.name);
       if (ordenado) {
         alumnoOrdenado.removeWhere(
-          (element) => element == event.nombre,
+          (element) => element == event.alumno,
         );
       }
-      emit(CambioAlumno(nombre: event.nombre));
+      emit(CambioAlumno(nombre: event.alumno));
     });
-    on<Reprobado>((event, emit) async {
-      _reprobados.add(event.nombre);
-      _revision.removeWhere((element) => element == event.nombre);
-      _aprobados.removeWhere(
-        (element) => element == event.nombre,
-      );
-      await db.updateEstadoAlumno(estadoReprobado, event.nombre);
+    on<MandarAReprobados>((event, emit) async {
+      alumnos.cambioEstado(
+          event.alumno, event.fromList, TiposListas.reprobados);
+      await db.updateEstadoAlumno(estadoReprobado, event.alumno.name);
       if (ordenado) {
         alumnoOrdenado.removeWhere(
-          (element) => element == event.nombre,
+          (element) => element == event.alumno,
         );
       }
-      emit(CambioAlumno(nombre: event.nombre));
+      emit(CambioAlumno(nombre: event.alumno));
     });
 
     on<OrdenarAlfabetico>((event, emit) {
-      ordenar();
+      ordenar(indice);
       ordenado = !ordenado;
       emit(NuevoTab(indice: indice));
     });
     on<AgregarAlumno>((event, emit) async {
-      if (!(_revision.contains(event.nombre) ||
-          _aprobados.contains(event.nombre) ||
-          _reprobados.contains(event.nombre))) {
-        _revision.add(event.nombre);
-        await db.insertAlumno(event.nombre, estadoRevision, 0);
-        if (ordenado && event.indice == 0) {
-          alumnoOrdenado.add(event.nombre);
-          ordenar();
-        }
+      alumnos.addAlumno(event.alumno);
+      await db.insertAlumno(event.alumno.name, estadoRevision, 0);
+      if (ordenado && event.indice == 0) {
+        alumnoOrdenado.add(event.alumno);
+        ordenar(indice);
       }
       emit(NuevoTab(indice: indice));
     });
     on<EliminarAlumno>((event, emit) async {
-      _revision.removeWhere(
-        (element) => element == event.nombre,
-      );
-      await db.deleteAlumno(event.nombre);
+      alumnos.removerDeLista(TiposListas.revision, event.alumno);
+      await db.deleteAlumno(event.alumno.name);
       if (ordenado && indice == 0) {
         alumnoOrdenado.removeWhere(
-          (element) => element == event.nombre,
+          (element) => element == event.alumno,
         );
       }
       emit(NuevoTab(indice: indice));
     });
 
     on<Calificar>((event, emit) async {
-      _calificaciones[event.alumno] = event.calificacion;
-      await db.updateCalificacion(event.calificacion.toString(), event.alumno);
+      alumnos.cambiarCalificacion(event.alumno, event.calificacion);
+      await db.updateCalificacion(
+          event.calificacion.toString(), event.alumno.name);
       emit(NuevoTab(indice: indice));
     });
   }
 
-  void ordenar() {
+  void ordenar(indice) {
     alumnoOrdenado = switch (indice) {
-      0 => List<String>.from(revision),
-      1 => List<String>.from(aprobados),
-      2 => List<String>.from(reprobados),
-      _ => ["No se encontró la lista"]
+      0 => List<Alumno>.from(alumnos.revision),
+      1 => List<Alumno>.from(alumnos.aprobados),
+      2 => List<Alumno>.from(alumnos.reprobados),
+      _ => []
     };
     alumnoOrdenado.sort((a, b) {
-      return a.toLowerCase().compareTo(b.toLowerCase());
+      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
     });
   }
 }
@@ -158,7 +130,7 @@ class CambioTab extends EventoCalificacion {
 
 class Calificar extends EventoCalificacion {
   final int calificacion;
-  final String alumno;
+  final Alumno alumno;
   Calificar({required this.alumno, required this.calificacion});
 }
 
@@ -176,43 +148,49 @@ class NuevoTab extends EstadoCalificaciones {
 }
 
 class CambioAlumno extends EstadoCalificaciones {
-  final String nombre;
+  final Alumno nombre;
 
   CambioAlumno({required this.nombre});
 }
 
 abstract class EventoAlumno extends EventoCalificacion {
   // ****************************************
-  final String nombre;
+  final Alumno alumno;
 
-  EventoAlumno({required this.nombre});
+  EventoAlumno({required this.alumno});
 }
 
 class EliminarAlumno extends EventoAlumno {
-  EliminarAlumno({required super.nombre});
+  EliminarAlumno({required super.alumno});
 }
 
 class AgregarAlumno extends EventoAlumno {
   final int indice;
 
-  AgregarAlumno(this.indice, {required super.nombre});
+  AgregarAlumno(this.indice, {required super.alumno});
 }
 
 class OrdenarAlfabetico extends EventoAlumno {
   final bool ordenar;
-  OrdenarAlfabetico(this.ordenar) : super(nombre: '');
+  OrdenarAlfabetico(this.ordenar)
+      : super(
+            alumno: Alumno(
+                name: "", estadoCalificacion: estadoRevision, calificacion: 0));
 }
 
-class Aprobado extends EventoAlumno {
-  Aprobado({required super.nombre});
+class MandarAAprobados extends EventoAlumno {
+  final TiposListas fromList;
+  MandarAAprobados({required this.fromList, required super.alumno});
 }
 
-class Reprobado extends EventoAlumno {
-  Reprobado({required super.nombre});
+class MandarAReprobados extends EventoAlumno {
+  final TiposListas fromList;
+  MandarAReprobados({required this.fromList, required super.alumno});
 }
 
-class Revision extends EventoAlumno {
-  Revision({required super.nombre});
+class MandarARevision extends EventoAlumno {
+  final TiposListas fromList;
+  MandarARevision({required this.fromList, required super.alumno});
 }
 
 class EstadoInicial extends EstadoCalificaciones {}

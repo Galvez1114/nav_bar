@@ -1,16 +1,16 @@
 import 'package:nav_bar/db/db_constantes.dart';
-import 'package:nav_bar/modelos/modelos_db.dart';
-import 'package:sqflite/sqflite.dart';
-import 'package:path/path.dart';
+import 'package:nav_bar/modelos/modelos.dart';
+//import 'package:sqflite/sqflite.dart';
+//import 'package:path/path.dart';
 import 'dart:io';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:sqflite/sqflite.dart';
+//import 'package:sqflite/sqflite.dart';
 
 class SQLDatabase {
   late Database _connection;
 
   Future<void> connectionDatabase() async {
-    _connection = await openDatabase(NAME_DB);
+    _connection = await openDatabase(nameDB);
     _createTable();
   }
 
@@ -22,28 +22,28 @@ class SQLDatabase {
   Future<void> insertAlumno(
       String nameAlumno, String estadoCalificacion, int calificacion) async {
     await _connection.transaction((txn) async {
-      int id1 = await txn.rawInsert(
+      await txn.rawInsert(
           'INSERT INTO $tablaAlumno ($columnaNombreAlumno, $columnaEstadoCalificacion, $columnaCalificacion) VALUES("$nameAlumno", "$estadoCalificacion", "$calificacion")');
     });
   }
 
   Future<void> deleteAlumno(String nameAlumno) async {
     await _connection.transaction((txn) async {
-      int id1 = await txn.rawDelete(
+      await txn.rawDelete(
           'DELETE FROM $tablaAlumno WHERE $columnaNombreAlumno = "$nameAlumno"');
     });
   }
 
   Future<void> updateEstadoAlumno(String estado, String alumno) async {
     await _connection.transaction((txn) async {
-      int id1 = await txn.rawUpdate(
+      await txn.rawUpdate(
           'UPDATE $tablaAlumno SET $columnaEstadoCalificacion = "$estado" WHERE $columnaNombreAlumno = "$alumno";');
     });
   }
 
   Future<void> updateCalificacion(String calificacion, String alumno) async {
     await _connection.transaction((txn) async {
-      int id1 = await txn.rawUpdate(
+      await txn.rawUpdate(
           'UPDATE $tablaAlumno SET $columnaCalificacion = "$calificacion" WHERE $columnaNombreAlumno = "$alumno";');
     });
   }

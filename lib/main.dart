@@ -4,9 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nav_bar/calificaciones_bloc.dart';
+import 'package:nav_bar/db/db_constantes.dart';
+import 'package:nav_bar/modelos/modelos.dart';
 
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:sqflite/sqflite.dart';
 
 Future main() async {
   if (Platform.isWindows || Platform.isLinux) {
@@ -23,8 +24,7 @@ class MainApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home: BlocProvider(
-        create: (context) =>
-            CalificacionesBloc()..add(ExtractDBData()),
+        create: (context) => CalificacionesBloc()..add(ExtractDBData()),
         child: BlocBuilder<CalificacionesBloc, EstadoCalificaciones>(
           builder: (context, state) {
             var bloc = context.watch<CalificacionesBloc>();
@@ -35,20 +35,20 @@ class MainApp extends StatelessWidget {
                   Expanded(
                     child: Center(
                       child: switch (bloc.state) {
-                        EstadoInicial() => CargandoDBWidget(),
+                        EstadoInicial() => const CargandoDBWidget(),
                         _ => switch (bloc.indice) {
-                            0 => ListaPorCalificar(
+                            0 => ListaRevision(
                                 alumnos: bloc.ordenado
                                     ? bloc.alumnoOrdenado
-                                    : bloc.revision),
+                                    : bloc.alumnos.revision),
                             1 => ListaAprobados(
                                 alumnos: bloc.ordenado
                                     ? bloc.alumnoOrdenado
-                                    : bloc.aprobados),
+                                    : bloc.alumnos.aprobados),
                             2 => ListaReprobado(
                                 alumnos: bloc.ordenado
                                     ? bloc.alumnoOrdenado
-                                    : bloc.reprobados),
+                                    : bloc.alumnos.reprobados),
                             _ => const Advertencia(),
                           }
                       },
@@ -72,17 +72,19 @@ class MainApp extends StatelessWidget {
   void showAddAlertDialog(BuildContext context, CalificacionesBloc bloc) {
     TextEditingController alumnoController = TextEditingController();
     // set up the button
-    Widget AgregarButton = TextButton(
+    Widget agregarButton = TextButton(
       child: const Text("Agregar"),
       onPressed: () {
-        context
-            .read<CalificacionesBloc>()
-            .add(AgregarAlumno(bloc.indice, nombre: alumnoController.text));
+        context.read<CalificacionesBloc>().add(AgregarAlumno(bloc.indice,
+            alumno: Alumno(
+                name: alumnoController.text,
+                estadoCalificacion: estadoRevision,
+                calificacion: 0)));
         Navigator.of(context).pop();
       },
     );
 
-    Widget CancelarButton = TextButton(
+    Widget cancelarButton = TextButton(
       child: const Text("Cancelar"),
       onPressed: () {
         Navigator.of(context).pop();
@@ -97,7 +99,7 @@ class MainApp extends StatelessWidget {
     AlertDialog alert = AlertDialog(
       title: const Text("Agregar alumno"),
       content: nombreAlumno,
-      actions: [CancelarButton, AgregarButton],
+      actions: [cancelarButton, agregarButton],
     );
 
     showDialog(
@@ -110,6 +112,8 @@ class MainApp extends StatelessWidget {
 }
 
 class CargandoDBWidget extends StatelessWidget {
+  const CargandoDBWidget({super.key});
+
   @override
   Widget build(BuildContext context) {
     return const CircularProgressIndicator();
@@ -165,7 +169,7 @@ class Advertencia extends StatelessWidget {
 }
 
 class ListaReprobado extends StatelessWidget {
-  final List<String> alumnos;
+  final List<Alumno> alumnos;
 
   const ListaReprobado({super.key, required this.alumnos});
   @override
@@ -180,19 +184,21 @@ class ListaReprobado extends StatelessWidget {
   }
 
   void funcionalidadReprobados(
-      BuildContext context, DismissDirection direction, String alumno) {
+      BuildContext context, DismissDirection direction, Alumno alumno) {
     if (direction == DismissDirection.startToEnd) {
-      context.read<CalificacionesBloc>().add(Revision(nombre: alumno));
+      context.read<CalificacionesBloc>().add(
+          MandarARevision(alumno: alumno, fromList: TiposListas.reprobados));
     }
     if (direction == DismissDirection.endToStart) {
-      context.read<CalificacionesBloc>().add(Aprobado(nombre: alumno));
+      context.read<CalificacionesBloc>().add(
+          MandarAAprobados(alumno: alumno, fromList: TiposListas.reprobados));
     }
   }
 }
 
-class ListaPorCalificar extends StatelessWidget {
-  final List<String> alumnos;
-  const ListaPorCalificar({super.key, required this.alumnos});
+class ListaRevision extends StatelessWidget {
+  final List<Alumno> alumnos;
+  const ListaRevision({super.key, required this.alumnos});
 
   @override
   Widget build(BuildContext context) {
@@ -210,18 +216,20 @@ class ListaPorCalificar extends StatelessWidget {
   }
 
   void funcionalidadRevision(
-      BuildContext context, DismissDirection direction, String alumno) {
+      BuildContext context, DismissDirection direction, Alumno alumno) {
     if (direction == DismissDirection.startToEnd) {
-      context.read<CalificacionesBloc>().add(Aprobado(nombre: alumno));
+      context.read<CalificacionesBloc>().add(
+          MandarAAprobados(alumno: alumno, fromList: TiposListas.revision));
     }
     if (direction == DismissDirection.endToStart) {
-      context.read<CalificacionesBloc>().add(Reprobado(nombre: alumno));
+      context.read<CalificacionesBloc>().add(
+          MandarAReprobados(alumno: alumno, fromList: TiposListas.revision));
     }
   }
 }
 
 class ListaAprobados extends StatelessWidget {
-  final List<String> alumnos;
+  final List<Alumno> alumnos;
   const ListaAprobados({super.key, required this.alumnos});
 
   @override
@@ -237,18 +245,20 @@ class ListaAprobados extends StatelessWidget {
   }
 
   void funcionalidadAprobados(
-      BuildContext context, DismissDirection direction, String alumno) {
+      BuildContext context, DismissDirection direction, Alumno alumno) {
     if (direction == DismissDirection.startToEnd) {
-      context.read<CalificacionesBloc>().add(Revision(nombre: alumno));
+      context.read<CalificacionesBloc>().add(
+          MandarARevision(alumno: alumno, fromList: TiposListas.aprobados));
     }
     if (direction == DismissDirection.endToStart) {
-      context.read<CalificacionesBloc>().add(Reprobado(nombre: alumno));
+      context.read<CalificacionesBloc>().add(
+          MandarAReprobados(alumno: alumno, fromList: TiposListas.aprobados));
     }
   }
 }
 
 class Elemento extends StatelessWidget {
-  final String alumno;
+  final Alumno alumno;
   final Function funcionLista;
   final Map<String, Color> opciones;
   const Elemento(
@@ -277,21 +287,17 @@ class Elemento extends StatelessWidget {
       },
       key: UniqueKey(),
       child: ListTile(
-        title: Text(alumno),
+        title: Text(alumno.name),
         trailing: bloc.indice == 0
             ? Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  SizedBox(
-                    width: 60,
-                    height: 40,
-                    child: TextFieldCalificar(alumno: alumno),
-                  ),
+                  TextFieldCalificar(alumno: alumno),
                   BotonEliminarAlumno(alumno: alumno)
                 ],
               )
             : Text(
-                bloc.calificaciones[alumno].toString(),
+                alumno.calificacion.toString(),
                 style: const TextStyle(fontSize: 15),
               ),
         style: ListTileStyle.list,
@@ -301,7 +307,7 @@ class Elemento extends StatelessWidget {
 }
 
 class BotonEliminarAlumno extends StatelessWidget {
-  final String alumno;
+  final Alumno alumno;
 
   const BotonEliminarAlumno({
     super.key,
@@ -322,13 +328,15 @@ class BotonEliminarAlumno extends StatelessWidget {
             },
           );
         },
-        icon: const Icon(Icons.remove_circle_outline));
+        icon: const Icon(Icons.person_remove_alt_1));
   }
 }
 
+// ignore: must_be_immutable
 class TextFieldCalificar extends StatelessWidget {
-  final String alumno;
-  const TextFieldCalificar({
+  final Alumno alumno;
+  int valueEntero = 0;
+  TextFieldCalificar({
     super.key,
     required this.alumno,
   });
@@ -336,46 +344,62 @@ class TextFieldCalificar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     TextEditingController calificarAlumno = TextEditingController();
-    var bloc = context.watch<CalificacionesBloc>();
-    calificarAlumno.text = bloc.calificaciones[alumno].toString();
-    return TextField(
-      controller: calificarAlumno,
-      textAlign: TextAlign.center,
-      keyboardType: TextInputType.number,
-      inputFormatters: [
-        FilteringTextInputFormatter.digitsOnly,
+    calificarAlumno.text = alumno.calificacion.toString();
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          margin: const EdgeInsets.all(8.0),
+          child: SizedBox(
+            width: 50,
+            height: 50,
+            child: TextField(
+              controller: calificarAlumno,
+              textAlign: TextAlign.center,
+              keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+              ],
+              decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.all(0.0)),
+              onChanged: (_) {
+                if (calificarAlumno.text == "") calificarAlumno.text = "0";
+                valueEntero = int.parse(calificarAlumno.text);
+                calificarAlumno.text = valueEntero.toString();
+                if (valueEntero > 100) {
+                  calificarAlumno.text = "100";
+                  valueEntero = 100;
+                }
+              },
+            ),
+          ),
+        ),
+        IconButton(
+            onPressed: () {
+              context
+                  .read<CalificacionesBloc>()
+                  .add(Calificar(calificacion: valueEntero, alumno: alumno));
+            },
+            icon: const Icon(Icons.save))
       ],
-      decoration: const InputDecoration(
-          border: OutlineInputBorder(), contentPadding: EdgeInsets.all(0.0)),
-      onChanged: (_) {
-        if (calificarAlumno.text == "") calificarAlumno.text = "0";
-        int valueEntero = int.parse(calificarAlumno.text);
-        calificarAlumno.text = valueEntero.toString();
-        if (valueEntero > 100) {
-          calificarAlumno.text = "100";
-          valueEntero = 100;
-        }
-        context
-            .read<CalificacionesBloc>()
-            .add(Calificar(calificacion: valueEntero, alumno: alumno));
-      },
     );
   }
 }
 
 class AlertConfirmacionEliminar extends StatelessWidget {
+  final Alumno alumno;
+
   const AlertConfirmacionEliminar({
     super.key,
     required this.alumno,
   });
 
-  final String alumno;
-
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text("¿Estás seguro de eliminar a $alumno?"),
-      content: Text("El alumno $alumno será permanentemente eliminado"),
+      title: Text("¿Estás seguro de eliminar a ${alumno.name}?"),
+      content: Text("El alumno ${alumno.name} será permanentemente eliminado"),
       actions: [
         TextButton(
             onPressed: () {
@@ -386,7 +410,7 @@ class AlertConfirmacionEliminar extends StatelessWidget {
             onPressed: () {
               context
                   .read<CalificacionesBloc>()
-                  .add(EliminarAlumno(nombre: alumno));
+                  .add(EliminarAlumno(alumno: alumno));
               Navigator.of(context).pop();
             },
             child: const Text("Continuar"))
