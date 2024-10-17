@@ -6,9 +6,7 @@ import 'package:nav_bar/modelos/modelos.dart';
 class CalificacionesBloc
     extends Bloc<EventoCalificacion, EstadoCalificaciones> {
   AlumnosHandler alumnos = AlumnosHandler();
-  late List<Alumno> alumnoOrdenado;
-
-  bool ordenado = false;
+  OrdenadosAlumnos ordenado = OrdenadosAlumnos();
   int _indice = 0;
   int get indice => _indice;
 
@@ -39,14 +37,14 @@ class CalificacionesBloc
     on<CambioTab>((event, emit) async {
       await db.getAlumnosAsList();
       _indice = event.indice;
-      ordenado = false;
+      ordenado.cambiarOrdenado("", false);
       emit(NuevoTab(indice: _indice));
     });
     on<MandarARevision>((event, emit) async {
       alumnos.cambioEstado(event.alumno, event.fromList, TiposListas.revision);
       await db.updateEstadoAlumno(estadoRevision, event.alumno.name);
-      if (ordenado) {
-        alumnoOrdenado.removeWhere(
+      if (ordenado.estaOrdenada()) {
+        ordenado.alumnosOrdenado.removeWhere(
           (element) => element == event.alumno,
         );
       }
@@ -55,8 +53,8 @@ class CalificacionesBloc
     on<MandarAAprobados>((event, emit) async {
       alumnos.cambioEstado(event.alumno, event.fromList, TiposListas.aprobados);
       await db.updateEstadoAlumno(estadoAprobado, event.alumno.name);
-      if (ordenado) {
-        alumnoOrdenado.removeWhere(
+      if (ordenado.estaOrdenada()) {
+        ordenado.alumnosOrdenado.removeWhere(
           (element) => element == event.alumno,
         );
       }
@@ -66,8 +64,8 @@ class CalificacionesBloc
       alumnos.cambioEstado(
           event.alumno, event.fromList, TiposListas.reprobados);
       await db.updateEstadoAlumno(estadoReprobado, event.alumno.name);
-      if (ordenado) {
-        alumnoOrdenado.removeWhere(
+      if (ordenado.estaOrdenada()) {
+        ordenado.alumnosOrdenado.removeWhere(
           (element) => element == event.alumno,
         );
       }
@@ -75,26 +73,34 @@ class CalificacionesBloc
     });
 
     on<OrdenarAlfabetico>((event, emit) {
-      ordenar(indice);
-      ordenado = !ordenado;
+      ordenado.cambiarOrdenado(ordenado.alfabetico, event.ordenar);
+      ordenado.ordenar(alumnos, indice);
       emit(NuevoTab(indice: indice));
     });
+
+    on<OrdenarDescendente>((event, emit) {
+      ordenado.cambiarOrdenado(ordenado.descendente, event.ordenar);
+      ordenado.ordenar(alumnos, indice);
+      emit(NuevoTab(indice: indice));
+    });
+
     on<AgregarAlumno>((event, emit) async {
       alumnos.addAlumno(event.alumno);
       await db.insertAlumno(event.alumno.name, estadoRevision, 0);
-      if (ordenado && event.indice == 0) {
-        alumnoOrdenado.add(event.alumno);
-        ordenar(indice);
+      if (ordenado.estaOrdenada() && event.indice == 0) {
+        ordenado.alumnosOrdenado.add(event.alumno);
+        ordenado.ordenar(alumnos, indice);
       }
       emit(NuevoTab(indice: indice));
     });
     on<EliminarAlumno>((event, emit) async {
       alumnos.removerDeLista(TiposListas.revision, event.alumno);
       await db.deleteAlumno(event.alumno.name);
-      if (ordenado && indice == 0) {
-        alumnoOrdenado.removeWhere(
+      if (ordenado.estaOrdenada() && indice == 0) {
+        ordenado.alumnosOrdenado.removeWhere(
           (element) => element == event.alumno,
         );
+        ordenado.ordenar(alumnos, indice);
       }
       emit(NuevoTab(indice: indice));
     });
@@ -104,18 +110,6 @@ class CalificacionesBloc
       await db.updateCalificacion(
           event.calificacion.toString(), event.alumno.name);
       emit(NuevoTab(indice: indice));
-    });
-  }
-
-  void ordenar(indice) {
-    alumnoOrdenado = switch (indice) {
-      0 => List<Alumno>.from(alumnos.revision),
-      1 => List<Alumno>.from(alumnos.aprobados),
-      2 => List<Alumno>.from(alumnos.reprobados),
-      _ => []
-    };
-    alumnoOrdenado.sort((a, b) {
-      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
     });
   }
 }
@@ -173,6 +167,14 @@ class AgregarAlumno extends EventoAlumno {
 class OrdenarAlfabetico extends EventoAlumno {
   final bool ordenar;
   OrdenarAlfabetico(this.ordenar)
+      : super(
+            alumno: Alumno(
+                name: "", estadoCalificacion: estadoRevision, calificacion: 0));
+}
+
+class OrdenarDescendente extends EventoAlumno {
+  final bool ordenar;
+  OrdenarDescendente(this.ordenar)
       : super(
             alumno: Alumno(
                 name: "", estadoCalificacion: estadoRevision, calificacion: 0));

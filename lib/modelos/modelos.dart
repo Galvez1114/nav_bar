@@ -107,4 +107,64 @@ class Alumno {
       required this.calificacion});
 }
 
+class OrdenadosAlumnos {
+  List<Alumno> alumnosOrdenado = [];
+  final String alfabetico = "Alfabetico";
+  final String descendente = "Descendente";
+  late final Map<String, bool> _ordenado = {
+    alfabetico: false,
+    descendente: false,
+  };
+
+  bool get ordenadoAlfabetico => _ordenado[alfabetico]!;
+  bool get ordenadoDescendente => _ordenado[descendente]!;
+
+  void cambiarOrdenado(String ordenamiento, bool valorOrdenamiento) {
+    _ordenado.updateAll((key, value) {
+      return key != ordenamiento ? false : valorOrdenamiento;
+    });
+  }
+
+  bool estaOrdenada() {
+    return _ordenado.values.any(
+      (element) => element == true,
+    );
+  }
+
+  void ordenar(AlumnosHandler alumnos, indice) {
+    if (_ordenado[alfabetico]!) {
+      _ordenarAlfabetico(alumnos, indice);
+      return;
+    }
+    if (_ordenado[descendente]!) {
+      _ordenarDescendente(alumnos, indice);
+      return;
+    }
+  }
+
+  void _ordenarAlfabetico(AlumnosHandler alumnos, indice) {
+    alumnosOrdenado = switch (indice) {
+      0 => List<Alumno>.from(alumnos.revision),
+      1 => List<Alumno>.from(alumnos.aprobados),
+      2 => List<Alumno>.from(alumnos.reprobados),
+      _ => []
+    };
+    alumnosOrdenado.sort((a, b) {
+      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+    });
+  }
+
+  void _ordenarDescendente(AlumnosHandler alumnos, indice) {
+    alumnosOrdenado = switch (indice) {
+      0 => List<Alumno>.from(alumnos.revision),
+      1 => List<Alumno>.from(alumnos.aprobados),
+      2 => List<Alumno>.from(alumnos.reprobados),
+      _ => []
+    };
+    alumnosOrdenado.sort((a, b) {
+      return a.calificacion.compareTo(b.calificacion);
+    });
+  }
+}
+
 enum TiposListas { revision, aprobados, reprobados }

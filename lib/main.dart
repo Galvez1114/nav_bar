@@ -38,23 +38,23 @@ class MainApp extends StatelessWidget {
                         EstadoInicial() => const CargandoDBWidget(),
                         _ => switch (bloc.indice) {
                             0 => ListaRevision(
-                                alumnos: bloc.ordenado
-                                    ? bloc.alumnoOrdenado
+                                alumnos: bloc.ordenado.estaOrdenada()
+                                    ? bloc.ordenado.alumnosOrdenado
                                     : bloc.alumnos.revision),
                             1 => ListaAprobados(
-                                alumnos: bloc.ordenado
-                                    ? bloc.alumnoOrdenado
+                                alumnos: bloc.ordenado.estaOrdenada()
+                                    ? bloc.ordenado.alumnosOrdenado
                                     : bloc.alumnos.aprobados),
                             2 => ListaReprobado(
-                                alumnos: bloc.ordenado
-                                    ? bloc.alumnoOrdenado
+                                alumnos: bloc.ordenado.estaOrdenada()
+                                    ? bloc.ordenado.alumnosOrdenado
                                     : bloc.alumnos.reprobados),
                             _ => const Advertencia(),
                           }
                       },
                     ),
                   ),
-                  ButtonListAction(bloc: bloc)
+                  SortSwitchesWidget(bloc: bloc)
                 ],
               ),
               floatingActionButton: FloatingActionButton(
@@ -120,8 +120,8 @@ class CargandoDBWidget extends StatelessWidget {
   }
 }
 
-class ButtonListAction extends StatelessWidget {
-  const ButtonListAction({
+class SortSwitchesWidget extends StatelessWidget {
+  const SortSwitchesWidget({
     super.key,
     required this.bloc,
   });
@@ -130,31 +130,70 @@ class ButtonListAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(child: BotonOrdenamiento(bloc: bloc));
+    return Center(
+        child: Row(
+      children: [
+        SwitchAlfabeticoWidget(bloc: bloc),
+        SwitchDescendenteWidget(bloc: bloc)
+      ],
+    ));
   }
 }
 
-class BotonOrdenamiento extends StatelessWidget {
-  const BotonOrdenamiento({
+class SwitchDescendenteWidget extends StatelessWidget {
+  final CalificacionesBloc bloc;
+
+  const SwitchDescendenteWidget({
     super.key,
     required this.bloc,
   });
-
-  final CalificacionesBloc bloc;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.all(8.0),
-      child: ElevatedButton(
-          onPressed: () {
-            context
-                .read<CalificacionesBloc>()
-                .add(OrdenarAlfabetico(bloc.ordenado));
-          },
-          child: Text(bloc.ordenado
-              ? "No ordenar alfabéticamente"
-              : "Ordenar alfabéticamente")),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Switch(
+              value: bloc.ordenado.ordenadoDescendente,
+              onChanged: (value) {
+                context
+                    .read<CalificacionesBloc>()
+                    .add(OrdenarDescendente(value));
+              }),
+          const Text("Ordenar Descendente")
+        ],
+      ),
+    );
+  }
+}
+
+class SwitchAlfabeticoWidget extends StatelessWidget {
+  final CalificacionesBloc bloc;
+
+  const SwitchAlfabeticoWidget({
+    super.key,
+    required this.bloc,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Switch(
+              value: bloc.ordenado.ordenadoAlfabetico,
+              onChanged: (value) {
+                context
+                    .read<CalificacionesBloc>()
+                    .add(OrdenarAlfabetico(value));
+              }),
+          const Text("Ordenar alfabéticamente")
+        ],
+      ),
     );
   }
 }
