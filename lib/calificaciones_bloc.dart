@@ -9,6 +9,7 @@ class CalificacionesBloc
   OrdenadosAlumnos ordenado = OrdenadosAlumnos();
   int _indice = 0;
   int get indice => _indice;
+  double promedio = 0.0;
 
   SQLDatabase db = SQLDatabase();
 
@@ -32,12 +33,14 @@ class CalificacionesBloc
             break;
         }
       }
+      promedio = calcularPromedioLista(indice);
       emit(NuevoTab(indice: _indice));
     });
     on<CambioTab>((event, emit) async {
       await db.getAlumnosAsList();
       _indice = event.indice;
       ordenado.cambiarOrdenado("", false);
+      promedio = calcularPromedioLista(indice);
       emit(NuevoTab(indice: _indice));
     });
     on<MandarARevision>((event, emit) async {
@@ -48,6 +51,7 @@ class CalificacionesBloc
           (element) => element == event.alumno,
         );
       }
+      promedio = calcularPromedioLista(indice);
       emit(CambioAlumno(nombre: event.alumno));
     });
     on<MandarAAprobados>((event, emit) async {
@@ -58,6 +62,7 @@ class CalificacionesBloc
           (element) => element == event.alumno,
         );
       }
+      promedio = calcularPromedioLista(indice);
       emit(CambioAlumno(nombre: event.alumno));
     });
     on<MandarAReprobados>((event, emit) async {
@@ -69,6 +74,7 @@ class CalificacionesBloc
           (element) => element == event.alumno,
         );
       }
+      promedio = calcularPromedioLista(indice);
       emit(CambioAlumno(nombre: event.alumno));
     });
 
@@ -91,6 +97,7 @@ class CalificacionesBloc
         ordenado.alumnosOrdenado.add(event.alumno);
         ordenado.ordenar(alumnos, indice);
       }
+      promedio = calcularPromedioLista(indice);
       emit(NuevoTab(indice: indice));
     });
     on<EliminarAlumno>((event, emit) async {
@@ -102,6 +109,7 @@ class CalificacionesBloc
         );
         ordenado.ordenar(alumnos, indice);
       }
+      promedio = calcularPromedioLista(indice);
       emit(NuevoTab(indice: indice));
     });
 
@@ -109,8 +117,28 @@ class CalificacionesBloc
       alumnos.cambiarCalificacion(event.alumno, event.calificacion);
       await db.updateCalificacion(
           event.calificacion.toString(), event.alumno.name);
+      promedio = calcularPromedioLista(indice);
       emit(NuevoTab(indice: indice));
     });
+  }
+
+  double calcularPromedioLista(indice) {
+    List<Alumno> alumnosLista = switch (indice) {
+      0 => List<Alumno>.from(alumnos.revision),
+      1 => List<Alumno>.from(alumnos.aprobados),
+      2 => List<Alumno>.from(alumnos.reprobados),
+      _ => []
+    };
+    int sum = 0;
+    alumnosLista.forEach(
+      (element) {
+        sum += element.calificacion;
+      },
+    );
+
+    double promedio = sum == 0 ? 0.0 : sum / alumnosLista.length;
+    String promedioFixed = promedio.toStringAsFixed(2);
+    return double.parse(promedioFixed);
   }
 }
 

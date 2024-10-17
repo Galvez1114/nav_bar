@@ -54,7 +54,13 @@ class MainApp extends StatelessWidget {
                       },
                     ),
                   ),
-                  SortSwitchesWidget(bloc: bloc)
+                  SortSwitchesWidget(bloc: bloc),
+                  Text("Promedio alumnos en ${switch (bloc.indice) {
+                    0 => "revision",
+                    1 => "aprobados",
+                    2 => "reprobados",
+                    _ => "DESCONOCIDA"
+                  }}: ${bloc.promedio}")
                 ],
               ),
               floatingActionButton: FloatingActionButton(

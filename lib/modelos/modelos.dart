@@ -6,23 +6,10 @@ class AlumnosHandler {
   List<Alumno> _revision = [];
   List<Alumno> _aprobados = [];
   List<Alumno> _reprobados = [];
-  late List<Alumno> alumnoOrdenado;
 
   List<Alumno> get aprobados => UnmodifiableListView(_aprobados);
   List<Alumno> get reprobados => UnmodifiableListView(_reprobados);
   List<Alumno> get revision => UnmodifiableListView(_revision);
-
-  void ordenar(indice) {
-    alumnoOrdenado = switch (indice) {
-      0 => List<Alumno>.from(revision),
-      1 => List<Alumno>.from(aprobados),
-      2 => List<Alumno>.from(reprobados),
-      _ => []
-    };
-    alumnoOrdenado.sort((a, b) {
-      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
-    });
-  }
 
   bool addAlumno(Alumno alumno) {
     if (!alumnoExists(alumno)) {
