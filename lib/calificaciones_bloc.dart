@@ -3,6 +3,7 @@ import 'dart:collection';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nav_bar/db/db.dart';
 import 'package:nav_bar/db/db_constantes.dart';
+import 'package:nav_bar/main.dart';
 import 'package:nav_bar/modelos/modelos_db.dart';
 
 class CalificacionesBloc
@@ -166,6 +167,8 @@ class ExtractDBData extends EventoCalificacion {}
 sealed class EstadoCalificaciones {} //********************************************************** */
 
 class AgregandoAlumnoEstado extends EstadoCalificaciones {}
+
+class DBCargada extends EstadoCalificaciones {}
 
 class NuevoTab extends EstadoCalificaciones {
   final int indice;

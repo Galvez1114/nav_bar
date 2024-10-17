@@ -23,7 +23,8 @@ class MainApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home: BlocProvider(
-        create: (context) => CalificacionesBloc()..add(ExtractDBData()),
+        create: (context) =>
+            CalificacionesBloc()..add(ExtractDBData()),
         child: BlocBuilder<CalificacionesBloc, EstadoCalificaciones>(
           builder: (context, state) {
             var bloc = context.watch<CalificacionesBloc>();
@@ -33,20 +34,23 @@ class MainApp extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Center(
-                      child: switch (bloc.indice) {
-                        0 => ListaPorCalificar(
-                            alumnos: bloc.ordenado
-                                ? bloc.alumnoOrdenado
-                                : bloc.revision),
-                        1 => ListaAprobados(
-                            alumnos: bloc.ordenado
-                                ? bloc.alumnoOrdenado
-                                : bloc.aprobados),
-                        2 => ListaReprobado(
-                            alumnos: bloc.ordenado
-                                ? bloc.alumnoOrdenado
-                                : bloc.reprobados),
-                        _ => const Advertencia(),
+                      child: switch (bloc.state) {
+                        EstadoInicial() => CargandoDBWidget(),
+                        _ => switch (bloc.indice) {
+                            0 => ListaPorCalificar(
+                                alumnos: bloc.ordenado
+                                    ? bloc.alumnoOrdenado
+                                    : bloc.revision),
+                            1 => ListaAprobados(
+                                alumnos: bloc.ordenado
+                                    ? bloc.alumnoOrdenado
+                                    : bloc.aprobados),
+                            2 => ListaReprobado(
+                                alumnos: bloc.ordenado
+                                    ? bloc.alumnoOrdenado
+                                    : bloc.reprobados),
+                            _ => const Advertencia(),
+                          }
                       },
                     ),
                   ),
@@ -102,6 +106,13 @@ class MainApp extends StatelessWidget {
         return alert;
       },
     );
+  }
+}
+
+class CargandoDBWidget extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return const CircularProgressIndicator();
   }
 }
 
