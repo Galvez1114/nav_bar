@@ -1,94 +1,159 @@
-import 'dart:collection';
-
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:nav_bar/db/db.dart';
+import 'package:nav_bar/db/db_constantes.dart';
+import 'package:nav_bar/modelos/modelos.dart';
 
 class CalificacionesBloc
     extends Bloc<EventoCalificacion, EstadoCalificaciones> {
-  final List<String> _aprobados = [];
-  final List<String> _reprobados = [];
-  final List<String> _revision = [
-    'Juan',
-    'Frnacisco',
-    'Paco',
-    'Pancho',
-    'Curro',
-    'Cisco',
-    'Kiko'
-  ];
-  late List<String> alumnoOrdenado;
-
-  List<String> get aprobados => UnmodifiableListView(_aprobados);
-
-  List<String> get reprobados => UnmodifiableListView(_reprobados);
-  List<String> get revision => UnmodifiableListView(_revision);
-
-  bool ordenado = false;
+  AlumnosHandler alumnos = AlumnosHandler();
+  OrdenadosAlumnos ordenado = OrdenadosAlumnos();
   int _indice = 0;
   int get indice => _indice;
+  double promedio = 0.0;
+  double promedioGeneral = 0.0;
+
+  SQLDatabase db = SQLDatabase();
 
   CalificacionesBloc() : super(EstadoInicial()) {
-    on<CambioTab>((event, emit) {
-      _indice = event.indice;
-      ordenado = false;
+    on<ExtractDBData>((event, emit) async {
+      await db.connectionDatabase();
+      List<Alumno> listaAlumnos = await db.getAlumnosAsList();
+      for (Alumno alumno in listaAlumnos) {
+        switch (alumno.estadoCalificacion) {
+          case estadoRevision:
+            alumnos.inicLists(alumno, TiposListas.revision);
+            break;
+          case estadoAprobado:
+            alumnos.inicLists(alumno, TiposListas.aprobados);
+            break;
+          case estadoReprobado:
+            alumnos.inicLists(alumno, TiposListas.reprobados);
+            break;
+          default:
+            throw Exception("VALOR NO IMPLEMENTADO");
+        }
+      }
+      promedio = calcularPromedioLista(indice);
+      promedioGeneral = calcularPromedioGeneral();
       emit(NuevoTab(indice: _indice));
     });
-    on<Revision>((event, emit) {
-      _revision.add(event.nombre);
-      _aprobados.removeWhere((element) => element == event.nombre);
-      _reprobados.removeWhere(
-        (element) => element == event.nombre,
-      );
-      if (ordenado) {
-        alumnoOrdenado.removeWhere(
-          (element) => element == event.nombre,
-        );
-      }
-      emit(CambioAlumno(nombre: event.nombre));
+    on<CambioTab>((event, emit) async {
+      _indice = event.indice;
+      ordenado.cambiarOrdenado("", false);
+      promedio = calcularPromedioLista(indice);
+      emit(NuevoTab(indice: _indice));
     });
-    on<Aprobado>((event, emit) {
-      _aprobados.add(event.nombre);
-      _revision.removeWhere((element) => element == event.nombre);
-      _reprobados.removeWhere(
-        (element) => element == event.nombre,
-      );
-      if (ordenado) {
-        alumnoOrdenado.removeWhere(
-          (element) => element == event.nombre,
+    on<MandarARevision>((event, emit) async {
+      alumnos.cambioEstado(event.alumno, event.fromList, TiposListas.revision);
+      await db.updateEstadoAlumno(estadoRevision, event.alumno.name);
+      if (ordenado.estaOrdenada()) {
+        ordenado.alumnosOrdenado.removeWhere(
+          (element) => element == event.alumno,
         );
       }
-      emit(CambioAlumno(nombre: event.nombre));
+      promedio = calcularPromedioLista(indice);
+      emit(CambioAlumno(nombre: event.alumno));
     });
-    on<Reprobado>((event, emit) {
-      _reprobados.add(event.nombre);
-      _revision.removeWhere((element) => element == event.nombre);
-      _aprobados.removeWhere(
-        (element) => element == event.nombre,
-      );
-      if (ordenado) {
-        alumnoOrdenado.removeWhere(
-          (element) => element == event.nombre,
+    on<MandarAAprobados>((event, emit) async {
+      alumnos.cambioEstado(event.alumno, event.fromList, TiposListas.aprobados);
+      await db.updateEstadoAlumno(estadoAprobado, event.alumno.name);
+      if (ordenado.estaOrdenada()) {
+        ordenado.alumnosOrdenado.removeWhere(
+          (element) => element == event.alumno,
         );
       }
-      emit(CambioAlumno(nombre: event.nombre));
+      promedio = calcularPromedioLista(indice);
+      emit(CambioAlumno(nombre: event.alumno));
+    });
+    on<MandarAReprobados>((event, emit) async {
+      alumnos.cambioEstado(
+          event.alumno, event.fromList, TiposListas.reprobados);
+      await db.updateEstadoAlumno(estadoReprobado, event.alumno.name);
+      if (ordenado.estaOrdenada()) {
+        ordenado.alumnosOrdenado.removeWhere(
+          (element) => element == event.alumno,
+        );
+      }
+      promedio = calcularPromedioLista(indice);
+      emit(CambioAlumno(nombre: event.alumno));
     });
 
     on<OrdenarAlfabetico>((event, emit) {
-      ordenar();
-      ordenado = !ordenado;
+      ordenado.cambiarOrdenado(ordenado.alfabetico, event.ordenar);
+      ordenado.ordenar(alumnos, indice);
+      emit(NuevoTab(indice: indice));
+    });
+
+    on<OrdenarDescendente>((event, emit) {
+      ordenado.cambiarOrdenado(ordenado.descendente, event.ordenar);
+      ordenado.ordenar(alumnos, indice);
+      emit(NuevoTab(indice: indice));
+    });
+
+    on<AgregarAlumno>((event, emit) async {
+      alumnos.addAlumno(event.alumno);
+      await db.insertAlumno(event.alumno.name, estadoRevision, 0);
+      if (ordenado.estaOrdenada() && event.indice == 0) {
+        ordenado.alumnosOrdenado.add(event.alumno);
+        ordenado.ordenar(alumnos, indice);
+      }
+      promedio = calcularPromedioLista(indice);
+      promedioGeneral = calcularPromedioGeneral();
+      emit(NuevoTab(indice: indice));
+    });
+    on<EliminarAlumno>((event, emit) async {
+      alumnos.removerDeLista(TiposListas.revision, event.alumno);
+      await db.deleteAlumno(event.alumno.name);
+      if (ordenado.estaOrdenada() && indice == 0) {
+        ordenado.alumnosOrdenado.removeWhere(
+          (element) => element == event.alumno,
+        );
+        ordenado.ordenar(alumnos, indice);
+      }
+      promedio = calcularPromedioLista(indice);
+      promedioGeneral = calcularPromedioGeneral();
+      emit(NuevoTab(indice: indice));
+    });
+
+    on<Calificar>((event, emit) async {
+      alumnos.cambiarCalificacion(event.alumno, event.calificacion);
+      await db.updateCalificacion(
+          event.calificacion.toString(), event.alumno.name);
+      promedio = calcularPromedioLista(indice);
+      promedioGeneral = calcularPromedioGeneral();
       emit(NuevoTab(indice: indice));
     });
   }
 
-  void ordenar() {
-    alumnoOrdenado = switch (indice) {
-      0 => List<String>.from(revision),
-      1 => List<String>.from(aprobados),
-      2 => List<String>.from(reprobados),
-      _ => ["No se encontró la lista"]
+  double calcularPromedioLista(indice) {
+    List<Alumno> alumnosLista = switch (indice) {
+      0 => List<Alumno>.from(alumnos.revision),
+      1 => List<Alumno>.from(alumnos.aprobados),
+      2 => List<Alumno>.from(alumnos.reprobados),
+      _ => []
     };
-    alumnoOrdenado.sort((a, b) {
-      return a.toLowerCase().compareTo(b.toLowerCase());
-    });
+    int sum = 0;
+    for (var element in alumnosLista) {
+      sum += element.calificacion;
+    }
+
+    double promedio = sum == 0 ? 0.0 : sum / alumnosLista.length;
+    String promedioFixed = promedio.toStringAsFixed(2);
+    return double.parse(promedioFixed);
+  }
+
+  double calcularPromedioGeneral() {
+    List<Alumno> alumnosLista = [];
+    alumnosLista.addAll(alumnos.revision);
+    alumnosLista.addAll(alumnos.aprobados);
+    alumnosLista.addAll(alumnos.reprobados);
+    int sum = 0;
+    for (var element in alumnosLista) {
+      sum += element.calificacion;
+    }
+    double promedio = sum == 0 ? 0.0 : sum / alumnosLista.length;
+    String promedioFixed = promedio.toStringAsFixed(2);
+    return double.parse(promedioFixed);
   }
 }
 
@@ -100,7 +165,19 @@ class CambioTab extends EventoCalificacion {
   CambioTab({required this.indice});
 }
 
-sealed class EstadoCalificaciones {}
+class Calificar extends EventoCalificacion {
+  final int calificacion;
+  final Alumno alumno;
+  Calificar({required this.alumno, required this.calificacion});
+}
+
+class ExtractDBData extends EventoCalificacion {}
+
+sealed class EstadoCalificaciones {} //********************************************************** */
+
+class AgregandoAlumnoEstado extends EstadoCalificaciones {}
+
+class DBCargada extends EstadoCalificaciones {}
 
 class NuevoTab extends EstadoCalificaciones {
   final int indice;
@@ -108,32 +185,57 @@ class NuevoTab extends EstadoCalificaciones {
 }
 
 class CambioAlumno extends EstadoCalificaciones {
-  final String nombre;
+  final Alumno nombre;
 
   CambioAlumno({required this.nombre});
 }
 
 abstract class EventoAlumno extends EventoCalificacion {
-  final String nombre;
+  // ****************************************
+  final Alumno alumno;
 
-  EventoAlumno({required this.nombre});
+  EventoAlumno({required this.alumno});
+}
+
+class EliminarAlumno extends EventoAlumno {
+  EliminarAlumno({required super.alumno});
+}
+
+class AgregarAlumno extends EventoAlumno {
+  final int indice;
+
+  AgregarAlumno(this.indice, {required super.alumno});
 }
 
 class OrdenarAlfabetico extends EventoAlumno {
   final bool ordenar;
-  OrdenarAlfabetico(this.ordenar) : super(nombre: '');
+  OrdenarAlfabetico(this.ordenar)
+      : super(
+            alumno: Alumno(
+                name: "", estadoCalificacion: estadoRevision, calificacion: 0));
 }
 
-class Aprobado extends EventoAlumno {
-  Aprobado({required super.nombre});
+class OrdenarDescendente extends EventoAlumno {
+  final bool ordenar;
+  OrdenarDescendente(this.ordenar)
+      : super(
+            alumno: Alumno(
+                name: "", estadoCalificacion: estadoRevision, calificacion: 0));
 }
 
-class Reprobado extends EventoAlumno {
-  Reprobado({required super.nombre});
+class MandarAAprobados extends EventoAlumno {
+  final TiposListas fromList;
+  MandarAAprobados({required this.fromList, required super.alumno});
 }
 
-class Revision extends EventoAlumno {
-  Revision({required super.nombre});
+class MandarAReprobados extends EventoAlumno {
+  final TiposListas fromList;
+  MandarAReprobados({required this.fromList, required super.alumno});
+}
+
+class MandarARevision extends EventoAlumno {
+  final TiposListas fromList;
+  MandarARevision({required this.fromList, required super.alumno});
 }
 
 class EstadoInicial extends EstadoCalificaciones {}

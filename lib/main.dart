@@ -1,8 +1,18 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nav_bar/calificaciones_bloc.dart';
+import 'package:nav_bar/db/db_constantes.dart';
+import 'package:nav_bar/modelos/modelos.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-void main() {
+Future main() async {
+  if (Platform.isWindows || Platform.isLinux) {
+    sqfliteFfiInit();
+  }
+  databaseFactory = databaseFactoryFfi;
   runApp(const MainApp());
 }
 
@@ -12,6 +22,7 @@ class MainApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       home: BlocProvider(
         create: (context) => CalificacionesBloc(),
         child: BlocBuilder<CalificacionesBloc, EstadoCalificaciones>(
@@ -23,41 +34,184 @@ class MainApp extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Center(
-                      child: switch (bloc.indice) {
-                        0 => ListaPorCalificar(
-                            alumnos: bloc.ordenado
-                                ? bloc.alumnoOrdenado
-                                : bloc.revision),
-                        1 => ListaAprobados(
-                            alumnos: bloc.ordenado
-                                ? bloc.alumnoOrdenado
-                                : bloc.aprobados),
-                        2 => ListaReprobado(
-                            alumnos: bloc.ordenado
-                                ? bloc.alumnoOrdenado
-                                : bloc.reprobados),
-                        _ => const Advertencia(),
+                      child: switch (bloc.state) {
+                        EstadoInicial() => const CargandoDBWidget(),
+                        _ => switch (bloc.indice) {
+                            0 => ListaRevision(
+                                alumnos: bloc.ordenado.estaOrdenada()
+                                    ? bloc.ordenado.alumnosOrdenado
+                                    : bloc.alumnos.revision),
+                            1 => ListaAprobados(
+                                alumnos: bloc.ordenado.estaOrdenada()
+                                    ? bloc.ordenado.alumnosOrdenado
+                                    : bloc.alumnos.aprobados),
+                            2 => ListaReprobado(
+                                alumnos: bloc.ordenado.estaOrdenada()
+                                    ? bloc.ordenado.alumnosOrdenado
+                                    : bloc.alumnos.reprobados),
+                            _ => const Advertencia(),
+                          }
                       },
                     ),
                   ),
-                  Center(
-                      child: Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: ElevatedButton(
-                        onPressed: () {
-                          context
-                              .read<CalificacionesBloc>()
-                              .add(OrdenarAlfabetico(bloc.ordenado));
-                        },
-                        child: Text(bloc.ordenado
-                            ? "No ordenar alfabéticamente"
-                            : "Ordenar alfabéticamente")),
-                  ))
+                  const Divider(),
+                  Column(
+                    children: [
+                      ListTile(
+                        title: Text(
+                            "Promedio alumnos en ${switch (bloc.indice) {
+                          0 => "revision",
+                          1 => "aprobados",
+                          2 => "reprobados",
+                          _ => "DESCONOCIDA"
+                        }}: ${bloc.promedio}"),
+                      ),
+                      ListTile(
+                        title:
+                            Text("Promedio general: ${bloc.promedioGeneral}"),
+                      ),
+                    ],
+                  ),
+                  const Divider(),
+                  SortSwitchesWidget(bloc: bloc),
                 ],
               ),
+              floatingActionButton: FloatingActionButton(
+                  child: const Icon(Icons.add),
+                  onPressed: () {
+                    showAddAlertDialog(context, bloc);
+                  }),
             );
           },
         ),
+      ),
+    );
+  }
+
+  void showAddAlertDialog(BuildContext context, CalificacionesBloc bloc) {
+    TextEditingController alumnoController = TextEditingController();
+    // set up the button
+    Widget agregarButton = TextButton(
+      child: const Text("Agregar"),
+      onPressed: () {
+        context.read<CalificacionesBloc>().add(AgregarAlumno(bloc.indice,
+            alumno: Alumno(
+                name: alumnoController.text,
+                estadoCalificacion: estadoRevision,
+                calificacion: 0)));
+        Navigator.of(context).pop();
+      },
+    );
+
+    Widget cancelarButton = TextButton(
+      child: const Text("Cancelar"),
+      onPressed: () {
+        Navigator.of(context).pop();
+      },
+    );
+
+    Widget nombreAlumno = TextField(
+      controller: alumnoController,
+      decoration: const InputDecoration(label: Text("Ingresar nombre alumno")),
+    );
+
+    AlertDialog alert = AlertDialog(
+      title: const Text("Agregar alumno"),
+      content: nombreAlumno,
+      actions: [cancelarButton, agregarButton],
+    );
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return alert;
+      },
+    );
+  }
+}
+
+class CargandoDBWidget extends StatelessWidget {
+  const CargandoDBWidget({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const CircularProgressIndicator();
+  }
+}
+
+class SortSwitchesWidget extends StatelessWidget {
+  const SortSwitchesWidget({
+    super.key,
+    required this.bloc,
+  });
+
+  final CalificacionesBloc bloc;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+        child: Row(
+      children: [
+        SwitchAlfabeticoWidget(bloc: bloc),
+        SwitchDescendenteWidget(bloc: bloc)
+      ],
+    ));
+  }
+}
+
+class SwitchDescendenteWidget extends StatelessWidget {
+  final CalificacionesBloc bloc;
+
+  const SwitchDescendenteWidget({
+    super.key,
+    required this.bloc,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Switch(
+              value: bloc.ordenado.ordenadoDescendente,
+              onChanged: (value) {
+                context
+                    .read<CalificacionesBloc>()
+                    .add(OrdenarDescendente(value));
+              }),
+          const Text("Ordenar Descendente")
+        ],
+      ),
+    );
+  }
+}
+
+class SwitchAlfabeticoWidget extends StatelessWidget {
+  final CalificacionesBloc bloc;
+
+  const SwitchAlfabeticoWidget({
+    super.key,
+    required this.bloc,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Switch(
+              value: bloc.ordenado.ordenadoAlfabetico,
+              onChanged: (value) {
+                context
+                    .read<CalificacionesBloc>()
+                    .add(OrdenarAlfabetico(value));
+              }),
+          const Text("Ordenar alfabéticamente")
+        ],
       ),
     );
   }
@@ -73,7 +227,7 @@ class Advertencia extends StatelessWidget {
 }
 
 class ListaReprobado extends StatelessWidget {
-  final List<String> alumnos;
+  final List<Alumno> alumnos;
 
   const ListaReprobado({super.key, required this.alumnos});
   @override
@@ -88,19 +242,21 @@ class ListaReprobado extends StatelessWidget {
   }
 
   void funcionalidadReprobados(
-      BuildContext context, DismissDirection direction, String alumno) {
+      BuildContext context, DismissDirection direction, Alumno alumno) {
     if (direction == DismissDirection.startToEnd) {
-      context.read<CalificacionesBloc>().add(Revision(nombre: alumno));
+      context.read<CalificacionesBloc>().add(
+          MandarARevision(alumno: alumno, fromList: TiposListas.reprobados));
     }
     if (direction == DismissDirection.endToStart) {
-      context.read<CalificacionesBloc>().add(Aprobado(nombre: alumno));
+      context.read<CalificacionesBloc>().add(
+          MandarAAprobados(alumno: alumno, fromList: TiposListas.reprobados));
     }
   }
 }
 
-class ListaPorCalificar extends StatelessWidget {
-  final List<String> alumnos;
-  const ListaPorCalificar({super.key, required this.alumnos});
+class ListaRevision extends StatelessWidget {
+  final List<Alumno> alumnos;
+  const ListaRevision({super.key, required this.alumnos});
 
   @override
   Widget build(BuildContext context) {
@@ -118,64 +274,49 @@ class ListaPorCalificar extends StatelessWidget {
   }
 
   void funcionalidadRevision(
-      BuildContext context, DismissDirection direction, String alumno) {
+      BuildContext context, DismissDirection direction, Alumno alumno) {
     if (direction == DismissDirection.startToEnd) {
-      context.read<CalificacionesBloc>().add(Aprobado(nombre: alumno));
+      context.read<CalificacionesBloc>().add(
+          MandarAAprobados(alumno: alumno, fromList: TiposListas.revision));
     }
     if (direction == DismissDirection.endToStart) {
-      context.read<CalificacionesBloc>().add(Reprobado(nombre: alumno));
+      context.read<CalificacionesBloc>().add(
+          MandarAReprobados(alumno: alumno, fromList: TiposListas.revision));
     }
   }
 }
 
 class ListaAprobados extends StatelessWidget {
-  final List<String> alumnos;
+  final List<Alumno> alumnos;
   const ListaAprobados({super.key, required this.alumnos});
 
   @override
   Widget build(BuildContext context) {
     return ListView.builder(
       itemCount: alumnos.length,
-      itemBuilder: (context, index) => Elemento(alumno: alumnos[index]),
+      itemBuilder: (context, index) => Elemento(
+        alumno: alumnos[index],
+        funcionLista: funcionalidadAprobados,
+        opciones: const {"Revision": Colors.blue, "Reprobados": Colors.yellow},
+      ),
     );
   }
 
   void funcionalidadAprobados(
-      BuildContext context, DismissDirection direction, String alumno) {
+      BuildContext context, DismissDirection direction, Alumno alumno) {
     if (direction == DismissDirection.startToEnd) {
-      context.read<CalificacionesBloc>().add(Revision(nombre: alumno));
+      context.read<CalificacionesBloc>().add(
+          MandarARevision(alumno: alumno, fromList: TiposListas.aprobados));
     }
     if (direction == DismissDirection.endToStart) {
-      context.read<CalificacionesBloc>().add(Reprobado(nombre: alumno));
-    }
-  }
-}
-
-class ListaReprobados extends StatelessWidget {
-  final List<String> alumnos;
-  const ListaReprobados({super.key, required this.alumnos});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.builder(
-      itemCount: alumnos.length,
-      itemBuilder: (context, index) => Elemento(alumno: alumnos[index]),
-    );
-  }
-
-  void funcionalidadAprobados(
-      BuildContext context, DismissDirection direction, String alumno) {
-    if (direction == DismissDirection.startToEnd) {
-      context.read<CalificacionesBloc>().add(Revision(nombre: alumno));
-    }
-    if (direction == DismissDirection.endToStart) {
-      context.read<CalificacionesBloc>().add(Aprobado(nombre: alumno));
+      context.read<CalificacionesBloc>().add(
+          MandarAReprobados(alumno: alumno, fromList: TiposListas.aprobados));
     }
   }
 }
 
 class Elemento extends StatelessWidget {
-  final String alumno;
+  final Alumno alumno;
   final Function funcionLista;
   final Map<String, Color> opciones;
   const Elemento(
@@ -203,56 +344,134 @@ class Elemento extends StatelessWidget {
       },
       key: UniqueKey(),
       child: ListTile(
-        title: Text(alumno),
+        title: Text(alumno.name),
+        trailing: bloc.indice == 0
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextFieldCalificar(alumno: alumno),
+                  BotonEliminarAlumno(alumno: alumno)
+                ],
+              )
+            : Text(
+                alumno.calificacion.toString(),
+                style: const TextStyle(fontSize: 15),
+              ),
         style: ListTileStyle.list,
       ),
     );
   }
 }
 
-class ElementoRevisado extends StatelessWidget {
-  final String alumno;
-  const ElementoRevisado({super.key, required this.alumno});
+class BotonEliminarAlumno extends StatelessWidget {
+  final Alumno alumno;
+
+  const BotonEliminarAlumno({
+    super.key,
+    required this.alumno,
+  });
 
   @override
   Widget build(BuildContext context) {
-    var estado = context.watch<CalificacionesBloc>();
-    return Dismissible(
-      direction: DismissDirection.horizontal,
-      background: const ColoredBox(
-        color: Colors.blue,
-        child: Text('Mandarlo a revisión'),
-      ),
-      secondaryBackground: switch (estado.indice) {
-        1 => const ColoredBox(
-            color: Colors.yellow,
-            child: Text('Reprobarlo', textAlign: TextAlign.right),
+    return IconButton(
+        onPressed: () {
+          showDialog(
+            context: context,
+            builder: (_) {
+              return BlocProvider.value(
+                value: BlocProvider.of<CalificacionesBloc>(context),
+                child: AlertConfirmacionEliminar(alumno: alumno),
+              );
+            },
+          );
+        },
+        icon: const Icon(Icons.person_remove_alt_1));
+  }
+}
+
+// ignore: must_be_immutable
+class TextFieldCalificar extends StatelessWidget {
+  final Alumno alumno;
+  int valueEntero = 0;
+  TextFieldCalificar({
+    super.key,
+    required this.alumno,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    TextEditingController calificarAlumno = TextEditingController();
+    calificarAlumno.text = alumno.calificacion.toString();
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          margin: const EdgeInsets.all(8.0),
+          child: SizedBox(
+            width: 50,
+            height: 50,
+            child: TextField(
+              controller: calificarAlumno,
+              textAlign: TextAlign.center,
+              keyboardType: TextInputType.number,
+              inputFormatters: [
+                FilteringTextInputFormatter.digitsOnly,
+              ],
+              decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.all(0.0)),
+              onChanged: (_) {
+                if (calificarAlumno.text == "") calificarAlumno.text = "0";
+                valueEntero = int.parse(calificarAlumno.text);
+                calificarAlumno.text = valueEntero.toString();
+                if (valueEntero > 100) {
+                  calificarAlumno.text = "100";
+                  valueEntero = 100;
+                }
+              },
+            ),
           ),
-        2 => const ColoredBox(
-            color: Colors.green,
-            child: Text('Aprobarlo', textAlign: TextAlign.right),
-          ),
-        _ => const ColoredBox(
-            color: Colors.red,
-            child: Text('Est no deberia salir', textAlign: TextAlign.right),
-          )
-      },
-      onDismissed: (direction) {
-        if (direction == DismissDirection.startToEnd) {
-          context.read<CalificacionesBloc>().add(Revision(nombre: alumno));
-        }
-        if (estado.indice == 1 && direction == DismissDirection.endToStart) {
-          context.read<CalificacionesBloc>().add(Reprobado(nombre: alumno));
-        }
-        if (estado.indice == 2 && direction == DismissDirection.endToStart) {
-          context.read<CalificacionesBloc>().add(Aprobado(nombre: alumno));
-        }
-      },
-      key: UniqueKey(),
-      child: ListTile(
-        title: Text(alumno),
-        style: ListTileStyle.list,
-      ),
+        ),
+        IconButton(
+            onPressed: () {
+              context
+                  .read<CalificacionesBloc>()
+                  .add(Calificar(calificacion: valueEntero, alumno: alumno));
+            },
+            icon: const Icon(Icons.save))
+      ],
+    );
+  }
+}
+
+class AlertConfirmacionEliminar extends StatelessWidget {
+  final Alumno alumno;
+
+  const AlertConfirmacionEliminar({
+    super.key,
+    required this.alumno,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text("¿Estás seguro de eliminar a ${alumno.name}?"),
+      content: Text("El alumno ${alumno.name} será permanentemente eliminado"),
+      actions: [
+        TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+            child: const Text("Cancelar")),
+        TextButton(
+            onPressed: () {
+              context
+                  .read<CalificacionesBloc>()
+                  .add(EliminarAlumno(alumno: alumno));
+              Navigator.of(context).pop();
+            },
+            child: const Text("Continuar"))
+      ],
     );
   }
 }
