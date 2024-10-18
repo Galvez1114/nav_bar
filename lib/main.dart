@@ -14,6 +14,7 @@ Future main() async {
     sqfliteFfiInit();
   }
   databaseFactory = databaseFactoryFfi;
+
   runApp(const MainApp());
 }
 
@@ -94,21 +95,32 @@ class MainApp extends StatelessWidget {
 
   void showAddAlertDialog(BuildContext context, CalificacionesBloc bloc) {
     TextEditingController alumnoController = TextEditingController();
+    TextEditingController calificacionController = TextEditingController();
     // set up the button
     Widget agregarButton = TextButton(
-      child: const Text("Agregar"),
+      style: const ButtonStyle(
+          backgroundColor: WidgetStatePropertyAll(Colors.blue)),
+      child: const Text(
+        "Agregar",
+        style: TextStyle(color: Colors.white),
+      ),
       onPressed: () {
         context.read<CalificacionesBloc>().add(AgregarAlumno(bloc.indice,
             alumno: Alumno(
                 name: alumnoController.text,
                 estadoCalificacion: estadoRevision,
-                calificacion: 0)));
+                calificacion: int.parse(calificacionController.text))));
         Navigator.of(context).pop();
       },
     );
 
     Widget cancelarButton = TextButton(
-      child: const Text("Cancelar"),
+      style: const ButtonStyle(
+          backgroundColor: WidgetStatePropertyAll(Colors.red)),
+      child: const Text(
+        "Cancelar",
+        style: TextStyle(color: Colors.white),
+      ),
       onPressed: () {
         Navigator.of(context).pop();
       },
@@ -118,10 +130,17 @@ class MainApp extends StatelessWidget {
       controller: alumnoController,
       decoration: const InputDecoration(label: Text("Ingresar nombre alumno")),
     );
+    Widget calificacionAlumno = TextField(
+      controller: calificacionController,
+      decoration:
+          const InputDecoration(label: Text("Ingresar calificación alumno")),
+    );
 
     AlertDialog alert = AlertDialog(
       title: const Text("Agregar alumno"),
-      content: nombreAlumno,
+      content: Column(
+        children: [nombreAlumno, calificacionAlumno],
+      ),
       actions: [cancelarButton, agregarButton],
     );
 
