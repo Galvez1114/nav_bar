@@ -3,9 +3,9 @@ import 'dart:collection';
 import 'package:nav_bar/db/db_constantes.dart';
 
 class AlumnosHandler {
-  List<Alumno> _revision = [];
-  List<Alumno> _aprobados = [];
-  List<Alumno> _reprobados = [];
+  final List<Alumno> _revision = [];
+  final List<Alumno> _aprobados = [];
+  final List<Alumno> _reprobados = [];
 
   List<Alumno> get aprobados => UnmodifiableListView(_aprobados);
   List<Alumno> get reprobados => UnmodifiableListView(_reprobados);
@@ -149,7 +149,7 @@ class OrdenadosAlumnos {
       _ => []
     };
     alumnosOrdenado.sort((a, b) {
-      return a.calificacion.compareTo(b.calificacion);
+      return b.calificacion.compareTo(a.calificacion);
     });
   }
 }

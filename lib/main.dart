@@ -29,6 +29,10 @@ class MainApp extends StatelessWidget {
           builder: (context, state) {
             var bloc = context.watch<CalificacionesBloc>();
             return Scaffold(
+              appBar: AppBar(
+                title: const Text('Calificaciones'),
+                backgroundColor: Colors.tealAccent,
+              ),
               bottomNavigationBar: BarraNavegacion(indice: bloc.indice),
               body: Column(
                 children: [
@@ -181,7 +185,7 @@ class SwitchDescendenteWidget extends StatelessWidget {
                     .read<CalificacionesBloc>()
                     .add(OrdenarDescendente(value));
               }),
-          const Text("Ordenar Descendente")
+          const Text("Ordenar por calificación")
         ],
       ),
     );
@@ -350,8 +354,12 @@ class Elemento extends StatelessWidget {
             ? Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  TextFieldCalificar(alumno: alumno),
-                  BotonEliminarAlumno(alumno: alumno)
+                  TextCalificacion(alumno: alumno),
+                  //TextFieldCalificar(alumno: alumno),
+                  BotonEliminarAlumno(alumno: alumno),
+                  BotonEditarCalificacion(
+                    alumno: alumno,
+                  )
                 ],
               )
             : Text(
@@ -361,6 +369,15 @@ class Elemento extends StatelessWidget {
         style: ListTileStyle.list,
       ),
     );
+  }
+}
+
+class TextCalificacion extends StatelessWidget {
+  final Alumno alumno;
+  const TextCalificacion({super.key, required this.alumno});
+  @override
+  Widget build(BuildContext context) {
+    return Text('${alumno.calificacion}');
   }
 }
 
@@ -387,6 +404,59 @@ class BotonEliminarAlumno extends StatelessWidget {
           );
         },
         icon: const Icon(Icons.person_remove_alt_1));
+  }
+}
+
+class BotonEditarCalificacion extends StatelessWidget {
+  final Alumno alumno;
+  const BotonEditarCalificacion({super.key, required this.alumno});
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+        onPressed: () {
+          showDialog(
+            context: context,
+            builder: (_) {
+              return BlocProvider.value(
+                value: BlocProvider.of<CalificacionesBloc>(context),
+                child: AlertEditarCalificacion(alumno: alumno),
+              );
+            },
+          );
+        },
+        icon: const Icon(Icons.edit_document));
+  }
+}
+
+class AlertEditarCalificacion extends StatelessWidget {
+  final Alumno alumno;
+  const AlertEditarCalificacion({super.key, required this.alumno});
+  @override
+  Widget build(BuildContext context) {
+    TextEditingController controllerCalificacion = TextEditingController();
+    return AlertDialog(
+      title: Text('Editar la calificación de ${alumno.name}'),
+      content: TextField(
+        controller: controllerCalificacion,
+        decoration: InputDecoration(hintText: '${alumno.calificacion}'),
+        keyboardType: TextInputType.number,
+        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      ),
+      actions: [
+        TextButton(
+            onPressed: () {
+              context.read<CalificacionesBloc>().add(Calificar(
+                  calificacion: int.parse(controllerCalificacion.text),
+                  alumno: alumno));
+              Navigator.of(context).pop();
+            },
+            child: const Text('Confirmar')),
+        TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancelar'))
+      ],
+    );
   }
 }
 
