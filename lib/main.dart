@@ -54,13 +54,26 @@ class MainApp extends StatelessWidget {
                       },
                     ),
                   ),
+                  const Divider(),
+                  Column(
+                    children: [
+                      ListTile(
+                        title: Text(
+                            "Promedio alumnos en ${switch (bloc.indice) {
+                          0 => "revision",
+                          1 => "aprobados",
+                          2 => "reprobados",
+                          _ => "DESCONOCIDA"
+                        }}: ${bloc.promedio}"),
+                      ),
+                      ListTile(
+                        title:
+                            Text("Promedio general: ${bloc.promedioGeneral}"),
+                      ),
+                    ],
+                  ),
+                  const Divider(),
                   SortSwitchesWidget(bloc: bloc),
-                  Text("Promedio alumnos en ${switch (bloc.indice) {
-                    0 => "revision",
-                    1 => "aprobados",
-                    2 => "reprobados",
-                    _ => "DESCONOCIDA"
-                  }}: ${bloc.promedio}")
                 ],
               ),
               floatingActionButton: FloatingActionButton(

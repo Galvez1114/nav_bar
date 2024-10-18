@@ -10,6 +10,7 @@ class CalificacionesBloc
   int _indice = 0;
   int get indice => _indice;
   double promedio = 0.0;
+  double promedioGeneral = 0.0;
 
   SQLDatabase db = SQLDatabase();
 
@@ -29,11 +30,11 @@ class CalificacionesBloc
             alumnos.inicLists(alumno, TiposListas.reprobados);
             break;
           default:
-            //VALOR NO IMPLEMENTADO.
-            break;
+            throw Exception("VALOR NO IMPLEMENTADO");
         }
       }
       promedio = calcularPromedioLista(indice);
+      promedioGeneral = calcularPromedioGeneral();
       emit(NuevoTab(indice: _indice));
     });
     on<CambioTab>((event, emit) async {
@@ -97,6 +98,7 @@ class CalificacionesBloc
         ordenado.ordenar(alumnos, indice);
       }
       promedio = calcularPromedioLista(indice);
+      promedioGeneral = calcularPromedioGeneral();
       emit(NuevoTab(indice: indice));
     });
     on<EliminarAlumno>((event, emit) async {
@@ -109,6 +111,7 @@ class CalificacionesBloc
         ordenado.ordenar(alumnos, indice);
       }
       promedio = calcularPromedioLista(indice);
+      promedioGeneral = calcularPromedioGeneral();
       emit(NuevoTab(indice: indice));
     });
 
@@ -117,6 +120,7 @@ class CalificacionesBloc
       await db.updateCalificacion(
           event.calificacion.toString(), event.alumno.name);
       promedio = calcularPromedioLista(indice);
+      promedioGeneral = calcularPromedioGeneral();
       emit(NuevoTab(indice: indice));
     });
   }
@@ -129,12 +133,24 @@ class CalificacionesBloc
       _ => []
     };
     int sum = 0;
-    alumnosLista.forEach(
-      (element) {
-        sum += element.calificacion;
-      },
-    );
+    for (var element in alumnosLista) {
+      sum += element.calificacion;
+    }
 
+    double promedio = sum == 0 ? 0.0 : sum / alumnosLista.length;
+    String promedioFixed = promedio.toStringAsFixed(2);
+    return double.parse(promedioFixed);
+  }
+
+  double calcularPromedioGeneral() {
+    List<Alumno> alumnosLista = [];
+    alumnosLista.addAll(alumnos.revision);
+    alumnosLista.addAll(alumnos.aprobados);
+    alumnosLista.addAll(alumnos.reprobados);
+    int sum = 0;
+    for (var element in alumnosLista) {
+      sum += element.calificacion;
+    }
     double promedio = sum == 0 ? 0.0 : sum / alumnosLista.length;
     String promedioFixed = promedio.toStringAsFixed(2);
     return double.parse(promedioFixed);
