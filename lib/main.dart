@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:nav_bar/calificaciones_bloc.dart';
 import 'package:nav_bar/db/db_constantes.dart';
 import 'package:nav_bar/modelos/modelos.dart';
+import 'package:nav_bar/pantalla_detalles_alumno.dart';
 
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
@@ -32,7 +33,8 @@ class MainApp extends StatelessWidget {
             return Scaffold(
               appBar: AppBar(
                 title: const Text('Calificaciones'),
-                backgroundColor: Colors.tealAccent,
+                backgroundColor: const Color.fromRGBO(130, 139, 182, 1),
+                actions: [SortSwitchesWidget(bloc: bloc)],
               ),
               bottomNavigationBar: BarraNavegacion(indice: bloc.indice),
               body: Column(
@@ -60,25 +62,16 @@ class MainApp extends StatelessWidget {
                     ),
                   ),
                   const Divider(),
-                  Column(
-                    children: [
-                      ListTile(
-                        title: Text(
-                            "Promedio alumnos en ${switch (bloc.indice) {
-                          0 => "revision",
-                          1 => "aprobados",
-                          2 => "reprobados",
-                          _ => "DESCONOCIDA"
-                        }}: ${bloc.promedio}"),
-                      ),
-                      ListTile(
-                        title:
-                            Text("Promedio general: ${bloc.promedioGeneral}"),
-                      ),
-                    ],
+                  ListTile(
+                    title: Text(
+                      "Promedio general: ${bloc.promedioGeneral}",
+                      style: TextStyle(
+                          color: switch (bloc.promedioGeneral) {
+                        > 70 => Colors.green,
+                        _ => Colors.red
+                      }),
+                    ),
                   ),
-                  const Divider(),
-                  SortSwitchesWidget(bloc: bloc),
                 ],
               ),
               floatingActionButton: FloatingActionButton(
@@ -131,6 +124,11 @@ class MainApp extends StatelessWidget {
       decoration: const InputDecoration(label: Text("Ingresar nombre alumno")),
     );
     Widget calificacionAlumno = TextField(
+      inputFormatters: <TextInputFormatter>[
+        FilteringTextInputFormatter.digitsOnly,
+        LengthLimitingTextInputFormatter(3),
+        FilteringTextInputFormatter.allow(RegExp(r'^(100|[1-9]?[0-9])$')),
+      ],
       controller: calificacionController,
       decoration:
           const InputDecoration(label: Text("Ingresar calificación alumno")),
@@ -368,6 +366,15 @@ class Elemento extends StatelessWidget {
       },
       key: UniqueKey(),
       child: ListTile(
+        onLongPress: () {
+          Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => PantallaDetallesAlumno(
+                      nombre: alumno.name,
+                      calificacion: alumno.calificacion,
+                      estado: alumno.estadoCalificacion)));
+        },
         title: Text(alumno.name),
         trailing: bloc.indice == 0
             ? Row(
@@ -396,7 +403,14 @@ class TextCalificacion extends StatelessWidget {
   const TextCalificacion({super.key, required this.alumno});
   @override
   Widget build(BuildContext context) {
-    return Text('${alumno.calificacion}');
+    double pantallaWidth = MediaQuery.of(context).size.width;
+    return Padding(
+      padding: EdgeInsets.only(right: pantallaWidth * 0.4),
+      child: Text(
+        '${alumno.calificacion}',
+        style: const TextStyle(fontSize: 15),
+      ),
+    );
   }
 }
 
@@ -422,7 +436,10 @@ class BotonEliminarAlumno extends StatelessWidget {
             },
           );
         },
-        icon: const Icon(Icons.person_remove_alt_1));
+        icon: const Icon(
+          Icons.remove_circle,
+          color: Colors.red,
+        ));
   }
 }
 
@@ -444,7 +461,10 @@ class BotonEditarCalificacion extends StatelessWidget {
             },
           );
         },
-        icon: const Icon(Icons.edit_document));
+        icon: const Icon(
+          Icons.edit_document,
+          color: Colors.blue,
+        ));
   }
 }
 
@@ -460,7 +480,11 @@ class AlertEditarCalificacion extends StatelessWidget {
         controller: controllerCalificacion,
         decoration: InputDecoration(hintText: '${alumno.calificacion}'),
         keyboardType: TextInputType.number,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+        inputFormatters: <TextInputFormatter>[
+          FilteringTextInputFormatter.digitsOnly,
+          LengthLimitingTextInputFormatter(3),
+          FilteringTextInputFormatter.allow(RegExp(r'^(100|[1-9]?[0-9])$')),
+        ],
       ),
       actions: [
         TextButton(
@@ -474,61 +498,6 @@ class AlertEditarCalificacion extends StatelessWidget {
         TextButton(
             onPressed: () => Navigator.of(context).pop(),
             child: const Text('Cancelar'))
-      ],
-    );
-  }
-}
-
-// ignore: must_be_immutable
-class TextFieldCalificar extends StatelessWidget {
-  final Alumno alumno;
-  int valueEntero = 0;
-  TextFieldCalificar({
-    super.key,
-    required this.alumno,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    TextEditingController calificarAlumno = TextEditingController();
-    calificarAlumno.text = alumno.calificacion.toString();
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          margin: const EdgeInsets.all(8.0),
-          child: SizedBox(
-            width: 50,
-            height: 50,
-            child: TextField(
-              controller: calificarAlumno,
-              textAlign: TextAlign.center,
-              keyboardType: TextInputType.number,
-              inputFormatters: [
-                FilteringTextInputFormatter.digitsOnly,
-              ],
-              decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  contentPadding: EdgeInsets.all(0.0)),
-              onChanged: (_) {
-                if (calificarAlumno.text == "") calificarAlumno.text = "0";
-                valueEntero = int.parse(calificarAlumno.text);
-                calificarAlumno.text = valueEntero.toString();
-                if (valueEntero > 100) {
-                  calificarAlumno.text = "100";
-                  valueEntero = 100;
-                }
-              },
-            ),
-          ),
-        ),
-        IconButton(
-            onPressed: () {
-              context
-                  .read<CalificacionesBloc>()
-                  .add(Calificar(calificacion: valueEntero, alumno: alumno));
-            },
-            icon: const Icon(Icons.save))
       ],
     );
   }
@@ -573,7 +542,8 @@ class BarraNavegacion extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return NavigationBar(
-        indicatorColor: Colors.purple,
+        elevation: 10,
+        indicatorColor: const Color.fromARGB(255, 75, 94, 158),
         selectedIndex: indice,
         onDestinationSelected: (value) {
           context.read<CalificacionesBloc>().add(CambioTab(indice: value));

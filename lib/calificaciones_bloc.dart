@@ -91,15 +91,21 @@ class CalificacionesBloc
     });
 
     on<AgregarAlumno>((event, emit) async {
-      alumnos.addAlumno(event.alumno);
-      await db.insertAlumno(event.alumno.name, estadoRevision, 0);
-      if (ordenado.estaOrdenada() && event.indice == 0) {
-        ordenado.alumnosOrdenado.add(event.alumno);
-        ordenado.ordenar(alumnos, indice);
+      try {
+        if (alumnos.alumnoExists(event.alumno)) {
+          alumnos.addAlumno(event.alumno);
+          await db.insertAlumno(event.alumno.name, estadoRevision, 0);
+          if (ordenado.estaOrdenada() && event.indice == 0) {
+            ordenado.alumnosOrdenado.add(event.alumno);
+            ordenado.ordenar(alumnos, indice);
+          }
+          promedio = calcularPromedioLista(indice);
+          promedioGeneral = calcularPromedioGeneral();
+        }
+        emit(NuevoTab(indice: indice));
+      } catch (e) {
+        print(e.toString());
       }
-      promedio = calcularPromedioLista(indice);
-      promedioGeneral = calcularPromedioGeneral();
-      emit(NuevoTab(indice: indice));
     });
     on<EliminarAlumno>((event, emit) async {
       alumnos.removerDeLista(TiposListas.revision, event.alumno);
