@@ -32,7 +32,11 @@ class MainApp extends StatelessWidget {
             var bloc = context.watch<CalificacionesBloc>();
             return Scaffold(
               appBar: AppBar(
-                title: const Text('Calificaciones'),
+                title: const Text(
+                  'Calificaciones',
+                  style: TextStyle(
+                      fontWeight: FontWeight.bold, fontStyle: FontStyle.italic),
+                ),
                 backgroundColor: const Color.fromRGBO(130, 139, 182, 1),
                 actions: [SortSwitchesWidget(bloc: bloc)],
               ),
