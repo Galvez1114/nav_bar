@@ -104,7 +104,7 @@ class CalificacionesBloc
         }
         emit(NuevoTab(indice: indice));
       } catch (e) {
-        print(e.toString());
+        emit(NuevoTab(indice: indice));
       }
     });
     on<EliminarAlumno>((event, emit) async {
